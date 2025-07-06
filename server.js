@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -17,6 +18,11 @@ app.use(cors({
 // Middleware to parse JSON bodies
 app.use(express.json());
 
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabasePublicKey = process.env.SUPABASE_PUBLIC_KEY;
+const supabase = createClient(supabaseUrl, supabasePublicKey);
+
+
 // ✅ Rate limiting middleware
 const userLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 15 minutes
@@ -35,12 +41,6 @@ const authLimiter = rateLimit({
 });
 
 app.use(userLimiter); // ✅ Apply limiter globally to user routes
-
-
-// Supabase client setup — replace these with your own values
-const supabaseUrl = 'https://itbyomjyyzgfyhspsylj.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0YnlvbWp5eXpnZnloc3BzeWxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjI5NTcsImV4cCI6MjA2MzI5ODk1N30.49n8mPsTigvddOf_WTTJknyvsxvekYQ6kV_OhbEBf88'; // Use service role key only on backend!
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const extractToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
