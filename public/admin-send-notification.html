@@ -63,7 +63,7 @@
 
   async function formatDate(timestamp) {
     try {
-      const res = await fetch('/api/format-date', {
+      const res = await fetch('https://website-backend-adminserver.onrender.com/api/format-date', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,7 +92,7 @@
     btn.textContent = 'Sending...';
 
     try {
-      const res = await fetch('/api/admin/send-notification', {
+      const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/send-notification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +129,7 @@
     container.innerHTML = '';
 
     try {
-      const res = await fetch('/api/admin/notifications', {
+      const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/notifications', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.status === 401) return handleUnauthorized();

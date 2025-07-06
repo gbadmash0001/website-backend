@@ -122,7 +122,7 @@
 
       try {
         // Step 1: Check for pending request
-        let res = await fetch('/api/withdrawals/pending', {
+        let res = await fetch('https://website-backend-server.onrender.com/api/withdrawals/pending', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -144,7 +144,7 @@
         }
 
         // Step 2: Make withdrawal request
-        res = await fetch('/api/withdrawals', {
+        res = await fetch('https://website-backend-server.onrender.com/api/withdrawals', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -7,10 +7,10 @@ const rateLimit = require('express-rate-limit'); // ✅ Add the rate limit modul
 const { body, validationResult } = require('express-validator');
 const { userLogger, errorLogger } = require('./logger'); // ✅ Import your loggers
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 // Enable CORS for frontend access
 app.use(cors({
-  origin: 'http://localhost:3000', // 🔁 during development
+  origin: 'https://magnificent-brigadeiros-ab48cb.netlify.app/', // 🔁 during development
   credentials: true               // if you're using cookies or sessions
 }));
 
@@ -895,6 +895,4 @@ app.post('/api/format-date', (req, res) => {
 
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

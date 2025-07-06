@@ -97,7 +97,7 @@
 
     async function formatDate(timestamp) {
       try {
-        const res = await fetch('/api/format-date', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/format-date', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -115,7 +115,7 @@
     }
 
     async function fetchWithdrawalRequests() {
-      const res = await fetch('/api/admin/withdrawals', {
+      const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/withdrawals', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.status === 401) return handleUnauthorized();
@@ -147,7 +147,7 @@
       }
 
       try {
-        const res = await fetch('/api/admin/withdrawals/approve', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/withdrawals/approve', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -199,7 +199,7 @@
       }
 
       try {
-        const res = await fetch('/api/admin/withdrawals/reject', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/withdrawals/reject', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -85,7 +85,7 @@
       const syntheticEmail = `${mobile}@admin.com`;
 
       try {
-        const res = await fetch('/api/admin/login', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: syntheticEmail, password }),

@@ -91,7 +91,7 @@
 
     async function fetchBalance() {
       try {
-        const res = await fetch('/api/admin/wallet', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/wallet', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -128,7 +128,7 @@
       }
 
       try {
-        const res = await fetch('/api/admin/wallet/update', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/wallet/update', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

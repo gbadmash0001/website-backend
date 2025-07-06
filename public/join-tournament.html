@@ -94,7 +94,7 @@
 
   async function fetchWalletBalance() {
     try {
-      const res = await fetch('/api/wallet', {
+      const res = await fetch('https://website-backend-server.onrender.com/api/wallet', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -152,7 +152,7 @@
     }
 
     try {
-      const pendingRes = await fetch('/api/tournaments/pending', {
+      const pendingRes = await fetch('https://website-backend-server.onrender.com/api/tournaments/pending', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -165,7 +165,7 @@
         return;
       }
 
-      const joinRes = await fetch('/api/tournaments/join', {
+      const joinRes = await fetch('https://website-backend-server.onrender.com/api/tournaments/join', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

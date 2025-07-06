@@ -85,7 +85,7 @@
       alert("Please login first!");
       window.location.href = "login.html";
     } else {
-      fetch('/api/wallet', {
+      fetch('https://website-backend-server.onrender.com/api/wallet', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`

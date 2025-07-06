@@ -75,7 +75,7 @@
 
     async function formatDate(timestamp) {
       try {
-        const res = await fetch('/api/format-date', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/format-date', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -96,7 +96,7 @@
 
     async function fetchTransactions() {
       try {
-        const res = await fetch('/api/admin/transactions', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/transactions', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 

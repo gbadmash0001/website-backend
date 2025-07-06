@@ -81,7 +81,7 @@
 
     async function formatDate(timestamp) {
       try {
-        const res = await fetch('/api/format-date', {
+        const res = await fetch('https://website-backend-server.onrender.com/api/format-date', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ timestamp })
@@ -97,7 +97,7 @@
 
     async function markAllAsRead() {
       try {
-        const res = await fetch('/api/notifications/mark-all-read', {
+        const res = await fetch('https://website-backend-server.onrender.com/api/notifications/mark-all-read', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -120,7 +120,7 @@
       const container = document.getElementById('notificationsContainer');
 
       try {
-        const res = await fetch('/api/notifications', {
+        const res = await fetch('https://website-backend-server.onrender.com/api/notifications', {
           method: 'GET',
           headers: { 'Authorization': `Bearer ${token}` }
         });

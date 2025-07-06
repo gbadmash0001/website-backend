@@ -68,7 +68,7 @@
 
     async function fetchProfits() {
       try {
-        const res = await fetch('/api/admin/profits', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/profits', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
 

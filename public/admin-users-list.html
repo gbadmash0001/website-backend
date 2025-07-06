@@ -39,7 +39,7 @@
 
   async function formatDate(timestamp) {
     try {
-      const res = await fetch('/api/format-date', {
+      const res = await fetch('https://website-backend-adminserver.onrender.com/api/format-date', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +58,7 @@
 
   async function fetchUsers() {
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.status === 401) return handleUnauthorized();
@@ -91,7 +91,7 @@
   }
 
   async function fetchUserDetails(mobile) {
-    const res = await fetch(`/api/admin/user-details/${mobile}`, {
+    const res = await fetch(`https://website-backend-adminserver.onrender.com/api/admin/user-details/${mobile}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.status === 401) return handleUnauthorized();

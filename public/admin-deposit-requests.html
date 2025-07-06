@@ -108,7 +108,7 @@
 
     async function formatDate(timestamp) {
       try {
-        const res = await fetch('/api/format-date', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/format-date', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -128,7 +128,7 @@
 
     async function fetchDepositRequests() {
       try {
-        const res = await fetch('/api/admin/deposit-requests', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/deposit-requests', {
           headers: { 'Authorization': `Bearer ${adminToken}` }
         });
 
@@ -160,7 +160,7 @@
       }
 
       try {
-        const res = await fetch('/api/admin/approve-deposit', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/approve-deposit', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -200,7 +200,7 @@
       button.textContent = 'Rejecting...';
 
       try {
-        const res = await fetch('/api/admin/reject-deposit', {
+        const res = await fetch('https://website-backend-adminserver.onrender.com/api/admin/reject-deposit', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
