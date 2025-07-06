@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Send Notification</title>
+  <style>
+    body { background-color: #111; color: #fff; font-family: Arial, sans-serif; padding: 30px; }
+    h2 { color: #4caf50; }
+    textarea {
+      width: 100%; height: 100px; padding: 10px; font-size: 16px;
+      border-radius: 5px; border: none; resize: none; margin-bottom: 10px;
+    }
+    .send-btn {
+      background-color: #4caf50; color: white; border: none;
+      padding: 10px 20px; border-radius: 5px; font-size: 16px; cursor: pointer;
+    }
+    .send-btn:hover { background-color: #388e3c; }
+    .history {
+      margin-top: 30px; background-color: #222; padding: 15px; border-radius: 8px;
+    }
+    .history-item {
+      border-bottom: 1px solid #444; padding: 10px 0;
+    }
+    .date { color: #aaa; font-size: 12px; }
+    .back-btn {
+      margin-top: 30px; padding: 10px 20px; font-size: 14px;
+      background-color: #444; color: #fff; border: none;
+      border-radius: 5px; cursor: pointer;
+    }
+    .back-btn:hover { background-color: #666; }
+  </style>
+</head>
+<body>
+
+<h2>Send Notification</h2>
+
+<textarea id="notificationText" placeholder="Enter notification message..."></textarea>
+<br />
+<button class="send-btn" id="sendBtn" onclick="sendNotification()">Send Notification</button>
+
+<div class="history">
+  <h3>Notification History</h3>
+  <div id="notificationHistory"></div>
+</div>
+
+<button class="back-btn" onclick="window.location.href='admin-dashboard.html'">Back to Dashboard</button>
+
+<script>
+  const token = localStorage.getItem('adminToken');
+  if (!token) window.location.href = 'admin-login.html';
+
+  function handleUnauthorized() {
+    localStorage.removeItem('adminToken');
+    alert('Session expired. Please log in again.');
+    window.location.href = 'admin-login.html';
+  }
+
+  function escapeHTML(str) {
+    return str.replace(/[&<>"']/g, s =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]);
+  }
+
+  async function formatDate(timestamp) {
+    try {
+      const res = await fetch('/api/format-date', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ timestamp })
+      });
+      if (res.status === 401) return handleUnauthorized();
+      const data = await res.json();
+      return res.ok ? data.formatted : 'Invalid date';
+    } catch (err) {
+      console.error('Date formatting failed:', err.message);
+      return 'Error formatting date';
+    }
+  }
+
+  async function sendNotification() {
+    const btn = document.getElementById('sendBtn');
+    let text = document.getElementById('notificationText').value.trim();
+
+    if (!text) return alert('Please enter a notification message.');
+    if (text.length > 300) return alert('Message must not exceed 300 characters.');
+
+    text = escapeHTML(text);
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    try {
+      const res = await fetch('/api/admin/send-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: text })
+      });
+
+      if (res.status === 401) return handleUnauthorized();
+
+      const result = await res.json();
+
+      if (res.ok) {
+        document.getElementById('notificationText').value = '';
+        alert('Notification sent!');
+        renderNotifications();
+      } else {
+        const errMsg = result.errors
+          ? result.errors.map(e => e.msg).join('\n')
+          : result.error || 'Failed to send notification.';
+        alert(errMsg);
+      }
+    } catch (err) {
+      console.error('Error:', err.message);
+      alert('Something went wrong.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send Notification';
+    }
+  }
+
+  async function renderNotifications() {
+    const container = document.getElementById('notificationHistory');
+    container.innerHTML = '';
+
+    try {
+      const res = await fetch('/api/admin/notifications', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.status === 401) return handleUnauthorized();
+
+      const data = await res.json();
+
+      if (!data.notifications || data.notifications.length === 0) {
+        container.innerHTML = '<p>No notifications sent yet.</p>';
+        return;
+      }
+
+      for (const n of data.notifications) {
+        const formattedDate = await formatDate(n.date);
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = `
+          <div>${escapeHTML(n.message)}</div>
+          <div class="date">${formattedDate}</div>
+        `;
+        container.appendChild(div);
+      }
+
+    } catch (err) {
+      console.error('Fetch error:', err.message);
+      container.innerHTML = '<p>Failed to load notifications.</p>';
+    }
+  }
+
+  renderNotifications();
+</script>
+
+</body>
+</html>

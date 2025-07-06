@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      text-align: center;
+    }
+    h2 {
+      color: #00e676;
+      margin-bottom: 30px;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .button {
+      background-color: #222;
+      padding: 20px;
+      border: 2px solid #00e676;
+      border-radius: 10px;
+      color: #00e676;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .button:hover {
+      background-color: #00e676;
+      color: #111;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Admin Dashboard</h2>
+
+  <div class="dashboard">
+    <div class="button" onclick="goTo('admin-wallet.html')">Wallet</div>
+    <div class="button" onclick="goTo('admin-profits.html')">Profits</div>
+    <div class="button" onclick="goTo('admin-deposit-requests.html')">Deposit Requests</div>
+    <div class="button" onclick="goTo('admin-withdrawal-requests.html')">Withdrawal Requests</div>
+    <div class="button" onclick="goTo('admin-tournament-management.html')">Tournament Management</div>
+    <div class="button" onclick="goTo('admin-users-list.html')">Users List</div>
+    <div class="button" onclick="goTo('admin-send-notification.html')">Send Notification</div>
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const adminToken = localStorage.getItem('adminToken');
+      const adminUsername = localStorage.getItem('adminUsername');
+
+      if (!adminToken || !adminUsername) {
+        alert('Please login first.');
+        window.location.href = 'admin-login.html';
+      }
+    });
+
+    function handleUnauthorized(status) {
+      if (status === 401) {
+        localStorage.removeItem('adminToken');
+        alert('Session expired. Please log in again.');
+        window.location.href = 'admin-login.html';
+        return true;
+      }
+      return false;
+    }
+
+    function goTo(page) {
+      window.location.href = page;
+    }
+  </script>
+
+</body>
+</html>

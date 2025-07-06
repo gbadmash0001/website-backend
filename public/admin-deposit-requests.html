@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Deposit Requests</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      text-align: center;
+    }
+    h2 {
+      color: #00e676;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 90%;
+      margin: 0 auto 30px;
+      border-collapse: collapse;
+      background-color: #222;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #444;
+    }
+    th {
+      background-color: #333;
+    }
+    button {
+      margin: 0 5px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .approve {
+      background-color: #00e676;
+      color: #111;
+    }
+    .approve:hover {
+      background-color: #00c853;
+    }
+    .reject {
+      background-color: #ff5252;
+      color: #fff;
+    }
+    .reject:hover {
+      background-color: #e53935;
+    }
+    .back-btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      background-color: #444;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+     ;
+    }
+    .back-btn:hover {
+      background-color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Deposit Requests</h2>
+
+  <table id="requests-table">
+    <thead>
+      <tr>
+        <th>Mobile Number</th>
+        <th>Amount (₹)</th>
+        <th>Date & Time</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <button class="back-btn" onclick="window.location.href='admin-dashboard.html'">Back to Dashboard</button>
+
+  <script>
+    const adminToken = localStorage.getItem('adminToken');
+    if (!adminToken) {
+      console.warn('[Auth] No token found. Redirecting to login.');
+      window.location.href = 'admin-login.html';
+    }
+
+    const tableBody = document.querySelector('#requests-table tbody');
+
+    function handleUnauthorized(status) {
+      if (status === 401) {
+        console.warn('[handleUnauthorized] Unauthorized. Redirecting...');
+        localStorage.removeItem('adminToken');
+        alert('Session expired. Please log in again.');
+        window.location.href = 'admin-login.html';
+        return true;
+      }
+      return false;
+    }
+
+    async function formatDate(timestamp) {
+      try {
+        const res = await fetch('/api/format-date', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({ timestamp })
+        });
+
+        if (handleUnauthorized(res.status)) return 'Session expired';
+        const data = await res.json();
+        return res.ok ? data.formatted : 'Invalid date';
+      } catch (err) {
+        console.error('[formatDate] Error:', err.message);
+        return 'Error';
+      }
+    }
+
+    async function fetchDepositRequests() {
+      try {
+        const res = await fetch('/api/admin/deposit-requests', {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+
+        if (handleUnauthorized(res.status)) return [];
+        const data = await res.json();
+        return res.ok ? data : [];
+      } catch (err) {
+        console.error('[fetchDepositRequests] Error:', err.message);
+        return [];
+      }
+    }
+
+    async function approveRequest(req, button) {
+      button.disabled = true;
+      button.textContent = 'Approving...';
+
+      const { id: depositId, user_id: userId, amount } = req;
+      
+      if (
+        typeof depositId !== 'number' || depositId <= 0 ||
+        typeof amount !== 'number' || amount <= 0 ||
+        typeof userId !== 'string'
+      ) {
+        console.warn('[approveRequest] Validation failed');
+        alert("Invalid approval data.");
+        button.disabled = false;
+        button.textContent = 'Approve';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/approve-deposit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({ depositId, userId, amount })
+        });
+
+        if (handleUnauthorized(res.status)) return;
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert(data.message || 'Deposit approved.');
+          renderRequests();
+        } else {
+          const errMsg = data.errors
+            ? data.errors.map(e => e.msg).join('\n')
+            : data.error || 'Error approving deposit.';
+          alert(errMsg);
+          button.disabled = false;
+          button.textContent = 'Approve';
+        }
+      } catch (err) {
+        console.error('[approveRequest] Error:', err.message);
+        alert("Unexpected error while approving.");
+        button.disabled = false;
+        button.textContent = 'Approve';
+      }
+    }
+
+    async function rejectRequest(req, button) {
+
+      if (!confirm('Are you sure you want to reject this deposit request?')) return;
+
+      button.disabled = true;
+      button.textContent = 'Rejecting...';
+
+      try {
+        const res = await fetch('/api/admin/reject-deposit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${adminToken}`
+          },
+          body: JSON.stringify({
+            depositId: req.id,
+            userId: req.user_id
+          })
+        });
+
+        if (handleUnauthorized(res.status)) return;
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert(data.message || 'Deposit rejected.');
+          renderRequests();
+        } else {
+          alert(data.error || 'Error rejecting deposit.');
+          button.disabled = false;
+          button.textContent = 'Reject';
+        }
+      } catch (err) {
+        console.error('[rejectRequest] Error:', err.message);
+        alert("Failed to reject deposit.");
+        button.disabled = false;
+        button.textContent = 'Reject';
+      }
+    }
+
+    async function renderRequests() {
+      const requests = await fetchDepositRequests();
+      tableBody.innerHTML = '';
+
+      if (!requests.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="4">No deposit requests</td>`;
+        tableBody.appendChild(tr);
+        return;
+      }
+
+      for (const req of requests) {
+        const formattedDate = await formatDate(req.created_at);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${req.users?.mobile || 'N/A'}</td>
+          <td>${req.amount}</td>
+          <td>${formattedDate}</td>
+          <td></td>
+        `;
+
+        const actionsTd = tr.querySelector('td:last-child');
+
+        const approveBtn = document.createElement('button');
+        approveBtn.textContent = 'Approve';
+        approveBtn.className = 'approve';
+        approveBtn.onclick = (e) => approveRequest(req, e.target);
+
+        const rejectBtn = document.createElement('button');
+        rejectBtn.textContent = 'Reject';
+        rejectBtn.className = 'reject';
+        rejectBtn.onclick = (e) => rejectRequest(req, e.target);
+
+        actionsTd.appendChild(approveBtn);
+        actionsTd.appendChild(rejectBtn);
+
+        tableBody.appendChild(tr);
+      }
+    }
+
+    renderRequests();
+  </script>
+</body>
+</html>

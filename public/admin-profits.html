@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Profits</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    h2 {
+      color: #00e676;
+      margin-bottom: 30px;
+    }
+    .container {
+      background-color: #222;
+      padding: 20px;
+      border-radius: 10px;
+      border: 2px solid #00e676;
+      display: inline-block;
+      min-width: 300px;
+    }
+    .profits {
+      font-size: 24px;
+      font-weight: bold;
+      color: #00e676;
+    }
+    .back-btn {
+      margin-top: 20px;
+      padding: 10px;
+      border: none;
+      background-color: #00e676;
+      color: #111;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 5px;
+    }
+    .back-btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Platform Profits</h2>
+  <div class="container">
+    <p><strong>Total Profits:</strong></p>
+    <p class="profits" id="profits">-- ₹</p>
+  </div>
+
+  <button class="back-btn" onclick="window.location.href='admin-dashboard.html'">Back to Dashboard</button>
+
+  <script>
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      window.location.href = 'admin-login.html';
+    }
+
+    function handleUnauthorized() {
+      localStorage.removeItem('adminToken');
+      alert('Session expired. Please log in again.');
+      window.location.href = 'admin-login.html';
+    }
+
+    async function fetchProfits() {
+      try {
+        const res = await fetch('/api/admin/profits', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) return handleUnauthorized();
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || "Error fetching profits");
+
+        document.getElementById("profits").textContent = `₹${data.profits.toFixed(2)}`;
+      } catch (err) {
+        console.error("Error fetching profits:", err.message);
+        document.getElementById("profits").textContent = "-- ₹";
+      }
+    }
+
+    fetchProfits();
+  </script>
+
+</body>
+</html>

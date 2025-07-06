@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Wallet</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      text-align: center;
+    }
+    h2 {
+      color: #00e676;
+      margin-bottom: 20px;
+    }
+    #balance {
+      font-size: 24px;
+      margin: 20px 0;
+      color: #00e676;
+    }
+    input[type="number"] {
+      padding: 10px;
+      font-size: 16px;
+      width: 150px;
+      margin: 10px;
+      background-color: #2a2a2a;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+      background-color: #00e676;
+      border: none;
+      border-radius: 5px;
+      color: #111;
+    }
+    button:hover {
+      background-color: #00c853;
+    }
+    .back-btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      background-color: #e4e;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 30px;
+    }
+    .back-btn:hover {
+      background-color: #c218c2;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Admin Wallet</h2>
+
+  <div id="balance">Wallet Balance: ₹0</div>
+
+  <input type="number" id="amount" placeholder="Enter amount (₹)" min="1" />
+  <button onclick="updateBalance('add')">Add</button>
+  <button onclick="updateBalance('deduct')">Deduct</button>
+
+  <br /><br />
+  <button onclick="goToTransactionHistory()">Transaction History</button>
+
+  <br /><br />
+  <button class="back-btn" onclick="window.location.href='admin-dashboard.html'">Back to Dashboard</button>
+
+  <script>
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      window.location.href = 'admin-login.html';
+    }
+
+    let balance = 0;
+    const balanceDiv = document.getElementById('balance');
+    const amountInput = document.getElementById('amount');
+
+    function renderBalance() {
+      balanceDiv.textContent = `Wallet Balance: ₹${balance}`;
+    }
+
+    async function fetchBalance() {
+      try {
+        const res = await fetch('/api/admin/wallet', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) return handleUnauthorized();
+
+        const data = await res.json();
+        balance = data.balance || 0;
+        renderBalance();
+      } catch (err) {
+        alert('Error fetching balance');
+        console.error('[fetchBalance]', err);
+      }
+    }
+
+    async function updateBalance(action) {
+      const raw = amountInput.value.trim();
+      const amount = parseFloat(raw);
+
+      if (!['add', 'deduct'].includes(action)) {
+        alert("Invalid action.");
+        return;
+      }
+
+      if (isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid positive amount.");
+        amountInput.focus();
+        return;
+      }
+
+      if (action === 'deduct' && amount > balance) {
+        alert("Insufficient wallet balance.");
+        amountInput.focus();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/wallet/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ amount, action })
+        });
+
+        if (res.status === 401) return handleUnauthorized();
+
+        const data = await res.json();
+
+        if (res.ok) {
+          balance = data.newBalance;
+          renderBalance();
+          amountInput.value = "";
+        } else {
+          const errMsg = data.errors
+            ? data.errors.map(e => e.msg).join('\n')
+            : data.error || 'Failed to update wallet';
+          alert(errMsg);
+        }
+      } catch (err) {
+        console.error('[updateBalance]', err);
+        alert("Network error. Please try again.");
+      }
+    }
+
+    function goToTransactionHistory() {
+      window.location.href = 'admin-transaction-history.html';
+    }
+
+    function handleUnauthorized() {
+      localStorage.removeItem('adminToken');
+      alert('Your session has expired. Please log in again.');
+      window.location.href = 'admin-login.html';
+    }
+
+    fetchBalance();
+  </script>
+
+</body>
+</html>

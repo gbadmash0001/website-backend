@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Transaction History</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      text-align: center;
+    }
+
+    h2 {
+      color: #00e676;
+      margin-bottom: 20px;
+    }
+
+    .transaction {
+      padding: 10px;
+      margin: 10px auto;
+      width: 300px;
+      border-radius: 5px;
+      background-color: #222;
+      font-size: 16px;
+      text-align: left;
+    }
+
+    .deposit {
+      color: #00e676;
+    }
+
+    .withdrawal {
+      color: #ff5252;
+    }
+
+    .back-btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      background-color: #e4e;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 30px;
+    }
+
+    .back-btn:hover {
+      background-color: #c3c;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Admin Transaction History</h2>
+  <div id="history">Loading transactions...</div>
+
+  <button class="back-btn" onclick="window.location.href='admin-dashboard.html'">Back to Dashboard</button>
+
+  <script>
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      window.location.href = 'admin-login.html';
+    }
+
+    const historyContainer = document.getElementById('history');
+
+    function handleUnauthorized() {
+      localStorage.removeItem('adminToken');
+      alert('Your session has expired. Please log in again.');
+      window.location.href = 'admin-login.html';
+    }
+
+    async function formatDate(timestamp) {
+      try {
+        const res = await fetch('/api/format-date', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ timestamp })
+        });
+
+        if (res.status === 401) return handleUnauthorized();
+
+        const data = await res.json();
+        return res.ok ? data.formatted : 'Invalid date';
+      } catch (err) {
+        console.error('Date formatting failed:', err.message);
+        return 'Error formatting date';
+      }
+    }
+
+    async function fetchTransactions() {
+      try {
+        const res = await fetch('/api/admin/transactions', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 401) return handleUnauthorized();
+
+        const data = await res.json();
+        if (!data.transactions || !data.transactions.length) {
+          historyContainer.textContent = 'No transactions found.';
+          return;
+        }
+
+        historyContainer.innerHTML = '';
+
+        for (const txn of data.transactions) {
+          const formatted = await formatDate(txn.date);
+          const div = document.createElement('div');
+          div.classList.add('transaction', txn.type);
+          div.innerHTML = `
+            ${txn.type === 'deposit' ? '+' : '-'}₹${txn.amount} <br>
+            <small>${formatted}</small> <br>
+            <em>Description:</em> ${txn.description || 'No description'}
+          `;
+          historyContainer.appendChild(div);
+        }
+
+      } catch (err) {
+        historyContainer.textContent = 'Failed to load transactions.';
+        console.error(err);
+      }
+    }
+
+    fetchTransactions();
+  </script>
+
+</body>
+</html>

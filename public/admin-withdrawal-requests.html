@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Withdrawal Requests</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      text-align: center;
+    }
+    h2 {
+      color: #ff9800;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 90%;
+      margin: 0 auto 30px;
+      border-collapse: collapse;
+      background-color: #222;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 15px;
+      border-bottom: 1px solid #444;
+    }
+    th {
+      background-color: #333;
+    }
+    button {
+      margin: 0 5px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .approve {
+      background-color: #00e676;
+      color: #111;
+    }
+    .approve:hover {
+      background-color: #00c853;
+    }
+    .reject {
+      background-color: #ff5252;
+      color: #fff;
+    }
+    .reject:hover {
+      background-color: #e53935;
+    }
+    .back-btn {
+      padding: 10px 20px;
+      font-size: 14px;
+      background-color: #444;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    .back-btn:hover {
+      background-color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Withdrawal Requests</h2>
+
+  <table id="requests-table">
+    <thead>
+      <tr>
+        <th>Mobile Number</th>
+        <th>Amount (₹)</th>
+        <th>UPI Number</th>
+        <th>Date & Time</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <button class="back-btn" onclick="window.location.href='admin-dashboard.html'">Back to Dashboard</button>
+
+  <script>
+    const token = localStorage.getItem('adminToken');
+    if (!token) {
+      window.location.href = 'admin-login.html';
+    }
+
+    const tableBody = document.querySelector('#requests-table tbody');
+
+    async function formatDate(timestamp) {
+      try {
+        const res = await fetch('/api/format-date', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ timestamp })
+        });
+        if (res.status === 401) return handleUnauthorized();
+        const data = await res.json();
+        return res.ok ? data.formatted : 'Invalid date';
+      } catch (err) {
+        alert('Date formatting failed: ' + err.message);
+        return 'Error formatting date';
+      }
+    }
+
+    async function fetchWithdrawalRequests() {
+      const res = await fetch('/api/admin/withdrawals', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.status === 401) return handleUnauthorized();
+      const data = await res.json();
+      return res.ok ? data : [];
+    }
+
+    async function approveRequest(req, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Approving...';
+
+      const requestId = req.id;
+      const mobile = (req.users?.mobile || '').replace(/\D/g, '');
+      const amount = req.amount;
+
+      if (!Number.isInteger(requestId) || requestId <= 0) {
+        alert("Invalid request ID.");
+        return resetButton(btn, 'Approve');
+      }
+
+      if (!/^\d{10}$/.test(mobile)) {
+        alert("Invalid mobile number (must be 10 digits).");
+        return resetButton(btn, 'Approve');
+      }
+
+      if (typeof amount !== 'number' || amount <= 0) {
+        alert("Invalid amount.");
+        return resetButton(btn, 'Approve');
+      }
+
+      try {
+        const res = await fetch('/api/admin/withdrawals/approve', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ requestId, mobile, amount })
+        });
+
+        if (res.status === 401) return handleUnauthorized();
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert(data.message || 'Withdrawal approved.');
+          await loadRequests();
+        } else {
+          const errMsg = data.errors
+            ? data.errors.map(e => e.msg).join('\n')
+            : data.error || 'Approval failed.';
+          alert(errMsg);
+        }
+
+      } catch (err) {
+        alert('[approveRequest] Error: ' + err.message);
+        alert('Unexpected error during approval.');
+      }
+
+      resetButton(btn, 'Approve');
+    }
+
+    async function rejectRequest(req, btn) {
+
+      if (!confirm(`Reject withdrawal of ₹${req.amount} from ${req.users?.mobile || 'N/A'}?`)) {
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Rejecting...';
+
+      const requestId = req.id;
+      const userId = req.users?.id;
+
+      if (!Number.isInteger(requestId) || requestId <= 0) {
+        return resetButton(btn, 'Reject');
+      }
+
+      if (typeof userId !== 'string' || !userId.length) {
+        return resetButton(btn, 'Reject');
+      }
+
+      try {
+        const res = await fetch('/api/admin/withdrawals/reject', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ requestId, userId })
+        });
+
+        if (res.status === 401) return handleUnauthorized();
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert(data.message || 'Withdrawal rejected.');
+          await loadRequests();
+        } else {
+          const errMsg = data.errors
+            ? data.errors.map(e => e.msg).join('\n')
+            : data.error || 'Rejection failed.';
+          alert(errMsg);
+        }
+
+      } catch (err) {
+        alert('[rejectRequest] Error: ' + err.message);
+        alert('Unexpected error during rejection.');
+      }
+
+      resetButton(btn, 'Reject');
+    }
+
+    function resetButton(btn, label) {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+
+    function handleUnauthorized() {
+      localStorage.removeItem('adminToken');
+      alert('Your session has expired. Please log in again.');
+      window.location.href = 'admin-login.html';
+    }
+
+    async function loadRequests() {
+      const requests = await fetchWithdrawalRequests();
+      tableBody.innerHTML = '';
+
+      if (!requests.length) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="5" style="text-align:center;">No withdrawal requests</td>`;
+        tableBody.appendChild(tr);
+        return;
+      }
+
+      for (const req of requests) {
+        const formattedDate = await formatDate(req.created_at);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${req.users?.mobile || 'N/A'}</td>
+          <td>${req.amount}</td>
+          <td>${req.upi_number || 'N/A'}</td>
+          <td>${formattedDate}</td>
+          <td></td>
+        `;
+
+        const actionsTd = tr.querySelector('td:last-child');
+
+        const approveBtn = document.createElement('button');
+        approveBtn.textContent = 'Approve';
+        approveBtn.className = 'approve';
+        approveBtn.onclick = () => approveRequest(req, approveBtn);
+
+        const rejectBtn = document.createElement('button');
+        rejectBtn.textContent = 'Reject';
+        rejectBtn.className = 'reject';
+        rejectBtn.onclick = () => rejectRequest(req, rejectBtn);
+
+        actionsTd.appendChild(approveBtn);
+        actionsTd.appendChild(rejectBtn);
+
+        tableBody.appendChild(tr);
+      }
+    }
+
+    loadRequests();
+  </script>
+
+</body>
+</html>

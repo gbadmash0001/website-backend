@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Notifications</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
+    h2 {
+      color: #00e676;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .notification {
+      background-color: #222;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 12px;
+      border-left: 4px solid #00c853;
+    }
+    .date {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    .content {
+      font-size: 16px;
+    }
+    .back-btn {
+      display: block;
+      margin: 20px auto 0;
+      width: 120px;
+      padding: 10px;
+      background-color: #00c853;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .back-btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Notifications</h2>
+  <div id="notificationsContainer">
+    <!-- Notifications will appear here -->
+  </div>
+
+  <button class="back-btn" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+
+    function handleUnauthorized(status) {
+      if (status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        alert('Session expired. Please log in again.');
+        window.location.href = 'login.html';
+        return true;
+      }
+      return false;
+    }
+
+    if (!user || !token) {
+      alert("Please login first.");
+      window.location.href = "login.html";
+    }
+
+    async function formatDate(timestamp) {
+      try {
+        const res = await fetch('/api/format-date', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ timestamp })
+        });
+
+        const data = await res.json();
+        return res.ok ? data.formatted : 'Invalid date';
+      } catch (err) {
+        console.error('Date formatting failed:', err.message);
+        return 'Error formatting date';
+      }
+    }
+
+    async function markAllAsRead() {
+      try {
+        const res = await fetch('/api/notifications/mark-all-read', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (handleUnauthorized(res.status)) return;
+
+        const data = await res.json();
+        if (!data.success) {
+          console.warn('❗ Could not mark notifications as read:', data.error);
+        }
+      } catch (err) {
+        console.error('📛 Mark-all-read failed:', err.message);
+      }
+    }
+
+    async function loadNotifications() {
+      const container = document.getElementById('notificationsContainer');
+
+      try {
+        const res = await fetch('/api/notifications', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (handleUnauthorized(res.status)) return;
+
+        const data = await res.json();
+        container.innerHTML = '';
+
+        if (!data || !data.notifications || data.notifications.length === 0) {
+          container.innerHTML = '<p>No notifications yet.</p>';
+          return;
+        }
+
+        for (const notif of data.notifications) {
+          const formattedDate = await formatDate(notif.date);
+
+          const div = document.createElement('div');
+          div.className = 'notification';
+
+          const dateDiv = document.createElement('div');
+          dateDiv.className = 'date';
+          dateDiv.textContent = formattedDate;
+
+          const contentDiv = document.createElement('div');
+          contentDiv.className = 'content';
+          contentDiv.textContent = notif.message;
+
+          div.appendChild(dateDiv);
+          div.appendChild(contentDiv);
+          container.appendChild(div);
+        }
+
+        await markAllAsRead();
+
+      } catch (error) {
+        container.innerHTML = `<p>Error loading notifications: ${error.message}</p>`;
+      }
+    }
+
+    loadNotifications();
+  </script>
+
+</body>
+</html>

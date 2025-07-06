@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wallet - Free Fire Max</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .wallet-box {
+      background-color: #1e1e1e;
+      padding: 30px 40px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid #00c85366;
+      box-shadow: 0 0 15px rgba(0, 200, 83, 0.2);
+    }
+
+    .wallet-box h2 {
+      color: #00e676;
+      margin-bottom: 20px;
+    }
+
+    .wallet-box .balance {
+      font-size: 36px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .note {
+      font-size: 14px;
+      color: #aaa;
+    }
+
+    .back-btn {
+      margin-top: 25px;
+      background-color: #00c853;
+      padding: 10px 20px;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .back-btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wallet-box">
+    <h2>Your Wallet</h2>
+    <div class="balance" id="balance">Loading...</div>
+    <div class="note">This is your Free Fire tournament wallet</div>
+    <button class="back-btn" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("token");
+    const balanceEl = document.getElementById("balance");
+
+    function handleUnauthorized(status) {
+      if (status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        alert('Session expired. Please log in again.');
+        window.location.href = 'login.html';
+        return true;
+      }
+      return false;
+    }
+
+    if (!user || !token) {
+      alert("Please login first!");
+      window.location.href = "login.html";
+    } else {
+      fetch('/api/wallet', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(async res => {
+        if (handleUnauthorized(res.status)) return;
+        const data = await res.json();
+
+        if (data.wallet_balance !== undefined && data.wallet_balance !== null) {
+          balanceEl.textContent = `₹${data.wallet_balance.toFixed(2)}`;
+        } else if (data.error) {
+          balanceEl.textContent = data.error;
+        } else {
+          balanceEl.textContent = "Error loading balance.";
+        }
+      })
+      .catch(() => {
+        balanceEl.textContent = "Server error.";
+      });
+    }
+  </script>
+
+</body>
+</html>

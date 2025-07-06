@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile - Free Fire Max</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .profile-box {
+      background-color: #1e1e1e;
+      padding: 30px 40px;
+      border-radius: 10px;
+      width: 350px;
+      box-shadow: 0 0 15px rgba(0, 200, 83, 0.2);
+      border: 1px solid #00c85366;
+    }
+
+    h2 {
+      color: #00e676;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin-top: 15px;
+      margin-bottom: 5px;
+      color: #ccc;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+      background-color: #2a2a2a;
+      color: white;
+    }
+
+    .btn {
+      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background-color: #00c853;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .back-btn {
+      margin-top: 25px;
+      background-color: #00c853;
+      padding: 10px 20px;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="profile-box">
+    <h2>Your Profile</h2>
+
+    <label>Mobile Number</label>
+    <input type="text" id="mobile" disabled />
+
+    <label>In-Game UID</label>
+    <input type="text" id="uid" disabled />
+
+    <label>Username</label>
+    <input type="text" id="username" disabled />
+
+    <label>Password</label>
+    <input type="password" id="password" disabled />
+    <button class="back-btn" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+
+    function handleUnauthorized(status) {
+      if (status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        alert('Session expired. Please log in again.');
+        window.location.href = 'login.html';
+        return true;
+      }
+      return false;
+    }
+
+    if (!user || !token) {
+      alert("Please login first!");
+      window.location.href = "login.html";
+    }
+
+    async function loadProfile() {
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (handleUnauthorized(res.status)) return;
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error || 'Failed to load profile.');
+          return;
+        }
+
+        document.getElementById('mobile').value = data.mobile;
+        document.getElementById('uid').value = data.uid;
+        document.getElementById('username').value = data.username;
+        document.getElementById('password').value = '********';
+
+      } catch (err) {
+        console.error('Error loading profile:', err.message);
+        alert('Unexpected error. Please try again.');
+      }
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

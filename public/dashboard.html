@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>User Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #111;
+      color: #fff;
+    }
+
+    header {
+      background-color: #00c853;
+      padding: 15px 20px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 20px;
+      padding: 30px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background-color: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+      border: 1px solid #00c85366;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 15px rgba(0, 200, 83, 0.3);
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #00e676;
+    }
+
+    #notification-bell {
+      position: relative;
+      float: right;
+      font-size: 22px;
+      margin-right: 15px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <header>Loading...</header>
+
+  <div class="container">
+    <div class="card" onclick="goTo('wallet')"><h3>Wallet</h3></div>
+    <div class="card" onclick="goTo('profile')"><h3>Profile</h3></div>
+    <div class="card" onclick="goTo('add-money')"><h3>Add Money</h3></div>
+    <div class="card" onclick="goTo('withdraw')"><h3>Withdraw</h3></div>
+    <div class="card" onclick="goTo('join-tournament')"><h3>Join Tournament</h3></div>
+    <div class="card" id="notifications-card" onclick="goTo('notifications')" style="position: relative;">
+      <h3>Notifications</h3>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

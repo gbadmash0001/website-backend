@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Withdraw Money - Free Fire Max</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: #1e1e1e;
+      padding: 30px;
+      border-radius: 10px;
+      width: 350px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0, 200, 83, 0.2);
+      border: 1px solid #00c85366;
+    }
+
+    h2 {
+      color: #00e676;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: none;
+      background-color: #2a2a2a;
+      color: white;
+    }
+
+    .btn {
+      background-color: #00c853;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .note {
+      color: #bbb;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .back-btn {
+      background-color: transparent;
+      border: 1px solid #00c853;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Withdraw Money</h2>
+
+    <input type="number" id="withdrawAmount" placeholder="Enter amount (min ₹20, max ₹300)" />
+    <input type="text" id="upiNumber" placeholder="Enter UPI Number (10-digit mobile number)" />
+
+    <button class="btn" onclick="withdrawMoney()">Withdraw</button>
+    <div class="note">Only one withdrawal request allowed at a time</div>
+
+    <button class="btn back-btn" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+
+    if (!user || !token) {
+      alert('Please login first.');
+      window.location.href = 'login.html';
+    }
+
+    function showAlert(msg) {
+      alert(msg);
+    }
+
+    function handleUnauthorized(status) {
+      if (status === 401) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        alert("Session expired. Please log in again.");
+        window.location.href = 'login.html';
+        return true;
+      }
+      return false;
+    }
+
+    async function withdrawMoney() {
+      const amount = parseInt(document.getElementById("withdrawAmount").value);
+      const upi = document.getElementById("upiNumber").value.trim();
+
+      if (isNaN(amount) || amount < 20 || amount > 300) {
+        showAlert("Amount must be between ₹20 and ₹300.");
+        return;
+      }
+
+      if (!/^\d{10}$/.test(upi)) {
+        showAlert("UPI must be a valid 10-digit mobile number.");
+        return;
+      }
+
+      try {
+        // Step 1: Check for pending request
+        let res = await fetch('/api/withdrawals/pending', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (handleUnauthorized(res.status)) return;
+
+        let data = await res.json();
+
+        if (!res.ok) {
+          showAlert(data.error || 'Error checking pending withdrawals.');
+          return;
+        }
+
+        if (data.pending) {
+          showAlert("You already have a pending withdrawal request.");
+          return;
+        }
+
+        // Step 2: Make withdrawal request
+        res = await fetch('/api/withdrawals', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ amount, upi_number: upi })
+        });
+
+        if (handleUnauthorized(res.status)) return;
+
+        data = await res.json();
+
+        if (res.ok) {
+          showAlert("Withdrawal request submitted. Please wait for admin approval.");
+          window.location.href = "dashboard.html";
+        } else {
+          const errorMsg = data.errors
+            ? data.errors.map(err => err.msg).join("\n")
+            : data.error || "Failed to submit withdrawal request.";
+          showAlert(errorMsg);
+        }
+
+      } catch (err) {
+        console.error('[Withdrawals] Request failed:', err.message);
+        showAlert("Something went wrong. Please try again.");
+      }
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Login</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 50px;
+    }
+    h2 {
+      color: #00e676;
+    }
+    form {
+      background-color: #222;
+      padding: 20px;
+      border-radius: 10px;
+      width: 300px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      background-color: #333;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background-color: #00c853;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Admin Login</h2>
+  <form id="adminLoginForm">
+    <label for="adminUsername">Mobile Number:</label>
+    <input type="text" id="adminUsername" required maxlength="10" />
+
+    <label for="adminPassword">Password:</label>
+    <input type="password" id="adminPassword" required />
+
+    <button type="submit">Login</button>
+  </form>
+
+  <script>
+    document.getElementById('adminLoginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const mobile = document.getElementById('adminUsername').value.trim().replace(/\D/g, '');
+      const password = document.getElementById('adminPassword').value;
+
+      if (!/^\d{10}$/.test(mobile)) {
+        alert('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+
+      if (password.length < 6) {
+        alert('Password must be at least 6 characters long.');
+        return;
+      }
+
+      const syntheticEmail = `${mobile}@admin.com`;
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: syntheticEmail, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          const errorMsg = data.errors
+            ? data.errors.map(e => e.msg).join('\n')
+            : data.error || 'Login failed.';
+          alert(errorMsg);
+          return;
+        }
+
+        alert('Admin login successful.');
+        localStorage.setItem('adminUsername', data.username);
+        localStorage.setItem('adminToken', data.access_token);
+        window.location.href = 'admin-dashboard.html';
+      } catch (err) {
+        alert('Login error: ' + err.message);
+      }
+    });
+  </script>
+
+</body>
+</html>

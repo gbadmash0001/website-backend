@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Add Money - Free Fire Max</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: #1e1e1e;
+      padding: 30px;
+      border-radius: 10px;
+      width: 350px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0, 200, 83, 0.2);
+      border: 1px solid #00c85366;
+    }
+
+    h2 {
+      color: #00e676;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: none;
+      background-color: #2a2a2a;
+      color: white;
+    }
+
+    .btn {
+      background-color: #00c853;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    #qr-section {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .note {
+      color: #bbb;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+
+    .back-btn {
+      background-color: transparent;
+      border: 1px solid #00c853;
+    }
+
+    img {
+      width: 100%;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Add Money to Wallet</h2>
+
+    <div id="form-section">
+      <input type="number" id="amount" placeholder="Enter amount (min ₹20)" />
+      <button class="btn" onclick="submitAmount()">Deposit</button>
+      <div class="note">Only one deposit request can be active at a time</div>
+    </div>
+
+    <div id="qr-section">
+      <div class="note">Scan the QR below to make the payment:</div>
+      <img src="qr-code.jpg" alt="QR Code for Payment" />
+      <button class="btn" onclick="confirmDeposit()">Confirm</button>
+    </div>
+
+    <button class="btn back-btn" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    if (!token || !user) {
+      alert("Please login first.");
+      window.location.href = "login.html";
+    }
+
+    const amountInput = document.getElementById("amount");
+    const qrSection = document.getElementById("qr-section");
+    const formSection = document.getElementById("form-section");
+
+    let depositAmount = null;
+
+    function showAlert(message) {
+      alert(message);
+    }
+
+    function handleUnauthorized(status) {
+      if (status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        alert("Session expired. Please log in again.");
+        window.location.href = "login.html";
+        return true;
+      }
+      return false;
+    }
+
+    async function submitAmount() {
+      const amount = parseInt(amountInput.value.trim());
+
+      if (isNaN(amount) || amount < 20) {
+        showAlert("Minimum deposit amount is ₹20.");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/deposits/pending', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (handleUnauthorized(res.status)) return;
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          showAlert(data.error || 'Error checking pending deposits.');
+          return;
+        }
+
+        if (data.pending) {
+          showAlert("You already have a pending deposit request.");
+          return;
+        }
+
+        depositAmount = amount;
+        qrSection.style.display = "block";
+        formSection.style.display = "none";
+
+      } catch (err) {
+        console.error('[deposit-pending] Error:', err.message);
+        showAlert("Network error. Please try again.");
+      }
+    }
+
+    async function confirmDeposit() {
+      if (!depositAmount || depositAmount < 20) {
+        showAlert("Invalid deposit amount.");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/deposits', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ amount: depositAmount })
+        });
+
+        if (handleUnauthorized(res.status)) return;
+
+        const data = await res.json();
+
+        if (res.ok) {
+          showAlert("Deposit request submitted.");
+          window.location.href = "dashboard.html";
+        } else {
+          const errorMsg = data.errors
+            ? data.errors.map(e => e.msg).join("\n")
+            : data.error || "Failed to create deposit request.";
+          showAlert(errorMsg);
+        }
+
+      } catch (err) {
+        console.error('[deposit-submit] Error:', err.message);
+        showAlert("Network error. Please try again.");
+      }
+    }
+  </script>
+
+</body>
+</html>

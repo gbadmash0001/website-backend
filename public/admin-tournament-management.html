@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tournament Management</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      text-align: center;
+    }
+    .match-entry {
+      background-color: #222;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 10px;
+      width: 90%;
+    }
+    .entry-header {
+      font-size: 18px;
+      margin-bottom: 10px;
+      color: #80cbc4;
+    }
+    .btn {
+      padding: 8px 15px;
+      font-size: 14px;
+      margin: 5px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+    }
+    .winner-btn {
+      background-color: #2196f3;
+      color: #fff;
+    }
+    .winner-btn:hover {
+      background-color: #1976d2;
+    }
+    .cancel-btn {
+      background-color: #f44336;
+      color: #fff;
+    }
+    .cancel-btn:hover {
+      background-color: #d32f2f;
+    }
+    .back-btn {
+      margin-top: 30px;
+      padding: 10px 20px;
+      font-size: 14px;
+      background-color: #444;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .back-btn:hover {
+      background-color: #666;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Tournament Management</h2>
+
+<div id="matches-container"></div>
+
+<button class="back-btn" onclick="window.location.href='admin-dashboard.html'">Back to Dashboard</button>
+
+<script>
+  const token = localStorage.getItem('adminToken');
+  const API_BASE = '';
+
+  if (!token) {
+    window.location.href = 'admin-login.html';
+  }
+
+  function handleUnauthorized() {
+    localStorage.removeItem('adminToken');
+    alert('Session expired. Please log in again.');
+    window.location.href = 'admin-login.html';
+  }
+
+  async function fetchRegistrations() {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/tournaments`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (res.status === 401) return handleUnauthorized();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch tournaments');
+      return data;
+    } catch (err) {
+      console.error('Error fetching tournaments:', err.message);
+      return { matches: [], waitingPlayers: {} };
+    }
+  }
+
+  async function renderMatches() {
+    const container = document.getElementById('matches-container');
+    container.innerHTML = '';
+
+    const { matches, waitingPlayers } = await fetchRegistrations();
+
+    if (!matches.length && Object.keys(waitingPlayers).length === 0) {
+      container.innerHTML = '<p>No pending tournaments found</p>';
+      return;
+    }
+
+    // Matched tournaments — Select Winner
+    matches.forEach((match) => {
+      const div = document.createElement('div');
+      div.className = 'match-entry';
+
+      const header = document.createElement('div');
+      header.className = 'entry-header';
+      header.textContent = `${match.match_type}v${match.match_type} | Entry Fee: ₹${match.entry_fee} | Players: ${match.player1_mobile} vs ${match.player2_mobile}`;
+      div.appendChild(header);
+
+      const winnerBtn = document.createElement('button');
+      winnerBtn.className = 'btn winner-btn';
+      winnerBtn.textContent = 'Select Winner';
+      winnerBtn.onclick = async () => {
+        const input = prompt(`Enter "1" for ${match.player1_mobile}, "2" for ${match.player2_mobile}:`);
+        const winnerChoice = parseInt(input);
+
+        if (![1, 2].includes(winnerChoice)) {
+          alert('Invalid selection. Must be 1 or 2.');
+          return;
+        }
+
+        if (!Number.isInteger(match.match_id) || match.match_id <= 0) {
+          alert("Invalid match ID.");
+          return;
+        }
+
+        winnerBtn.disabled = true;
+        winnerBtn.textContent = 'Processing...';
+
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/tournaments/winner`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ matchId: match.match_id, winnerChoice })
+          });
+
+          if (res.status === 401) return handleUnauthorized();
+
+          const data = await res.json();
+          if (res.ok) {
+            alert(data.message || 'Winner declared.');
+            renderMatches();
+          } else {
+            const msg = data.errors ? data.errors.map(e => e.msg).join("\n") : data.error;
+            alert(msg || 'Failed to declare winner.');
+            winnerBtn.disabled = false;
+            winnerBtn.textContent = 'Select Winner';
+          }
+        } catch (err) {
+          console.error('Winner error:', err.message);
+          alert('Unexpected winner declaration error.');
+          winnerBtn.disabled = false;
+          winnerBtn.textContent = 'Select Winner';
+        }
+      };
+      div.appendChild(winnerBtn);
+      container.appendChild(div);
+    });
+
+    // Pending tournaments — Cancel option
+    Object.values(waitingPlayers).flat().forEach((player) => {
+      const div = document.createElement('div');
+      div.className = 'match-entry';
+
+      const header = document.createElement('div');
+      header.className = 'entry-header';
+      header.textContent = `${player.match_type}v${player.match_type} | Entry Fee: ₹${player.entry_fee} | Player: ${player.user_mobile}`;
+      div.appendChild(header);
+
+      const status = document.createElement('p');
+      status.style.color = '#ff9800';
+      status.textContent = 'Finding Match...';
+      div.appendChild(status);
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn cancel-btn';
+      cancelBtn.textContent = 'Cancel Tournament';
+      cancelBtn.onclick = async () => {
+        if (!confirm('Cancel this tournament and issue refund?')) return;
+
+        const registrationId = player.id;
+        const player1_id = player.user_id;
+
+        if (!Number.isInteger(registrationId) || registrationId <= 0 ||
+            !Number.isInteger(player1_id) || player1_id <= 0) {
+          alert('Invalid data for cancellation.');
+          return;
+        }
+
+        cancelBtn.disabled = true;
+        cancelBtn.textContent = 'Cancelling...';
+
+        try {
+          const res = await fetch(`${API_BASE}/api/admin/tournaments/cancel`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ registrationId, player1_id })
+          });
+
+          if (res.status === 401) return handleUnauthorized();
+
+          const data = await res.json();
+          if (res.ok) {
+            alert(data.message || 'Tournament cancelled.');
+            renderMatches();
+          } else {
+            const msg = data.errors ? data.errors.map(e => e.msg).join("\n") : data.error;
+            alert(msg || 'Cancellation failed.');
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Cancel Tournament';
+          }
+        } catch (err) {
+          console.error('Cancel error:', err.message);
+          alert('Unexpected cancellation error.');
+          cancelBtn.disabled = false;
+          cancelBtn.textContent = 'Cancel Tournament';
+        }
+      };
+      div.appendChild(cancelBtn);
+      container.appendChild(div);
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', renderMatches);
+</script>
+
+</body>
+</html>

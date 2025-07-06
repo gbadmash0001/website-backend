@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - Free Fire Max Tournament</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      outline: none;
+      margin-bottom: 15px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #00c853;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .error {
+      background-color: #ff4444;
+      color: #fff;
+      padding: 10px;
+      margin-top: 15px;
+      border-radius: 5px;
+      display: none;
+      text-align: center;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>User Login</h2>
+    <form id="loginForm">
+      <label for="mobile">Mobile Number</label>
+      <input type="text" id="mobile" name="mobile" required>
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required>
+
+      <button type="submit" class="btn">Login</button>
+
+      <div id="errorBox" class="error"></div>
+    </form>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById("loginForm");
+    const errorBox = document.getElementById("errorBox");
+
+    loginForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+
+      const mobile = document.getElementById("mobile").value.trim().replace(/\D/g, '');
+      const password = document.getElementById("password").value;
+
+      // ⛔ Frontend validation
+      if (!/^\d{10}$/.test(mobile)) {
+        showError("Mobile number must be exactly 10 digits.");
+        return;
+      }
+
+      if (password.length < 6) {
+        showError("Password must be at least 6 characters.");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ mobile, password })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          if (result.errors) {
+            showError(result.errors.map(err => err.msg).join("\n"));
+          } else {
+            showError(result.error || "Login failed.");
+          }
+        } else {
+          localStorage.setItem("user", JSON.stringify(result.user));
+          localStorage.setItem("token", result.token);
+          window.location.href = "dashboard.html";
+        }
+      } catch (err) {
+        showError("Network error. Please try again.");
+      }
+    });
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.style.display = "block";
+    }
+  </script>
+</body>
+</html>

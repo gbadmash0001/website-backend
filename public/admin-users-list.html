@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users List</title>
+  <style>
+    body { background-color: #111; color: #fff; font-family: Arial, sans-serif; padding: 30px; }
+    h2 { color: #1e1; }
+    .user-list, .user-details { margin-top: 20px; padding: 20px; background-color: #222; border-radius: 10px; }
+    .user-item { padding: 10px; border-bottom: 1px solid #444; cursor: pointer; }
+    .user-item:hover { background-color: #333; }
+    .details-section { margin-top: 20px; }
+    .highlight { color: #4caf50; }
+    .back-btn { margin-top: 30px; padding: 10px 20px; font-size: 14px; background-color: #444; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+    .back-btn:hover { background-color: #666; }
+  </style>
+</head>
+<body>
+
+<h2>All Registered Users</h2>
+
+<div class="user-list" id="userList"></div>
+<div class="user-details" id="userDetails" style="display: none;"></div>
+
+<button class="back-btn" onclick="window.location.href='admin-dashboard.html'">Back to Dashboard</button>
+
+<script>
+  const token = localStorage.getItem('adminToken');
+  if (!token) {
+    window.location.href = 'admin-login.html';
+  }
+
+  function handleUnauthorized() {
+    localStorage.removeItem('adminToken');
+    alert('Your session has expired. Please log in again.');
+    window.location.href = 'admin-login.html';
+  }
+
+  async function formatDate(timestamp) {
+    try {
+      const res = await fetch('/api/format-date', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ timestamp })
+      });
+      if (res.status === 401) return handleUnauthorized();
+      const data = await res.json();
+      return res.ok ? data.formatted : 'Invalid date';
+    } catch (err) {
+      console.error('Date formatting failed:', err.message);
+      return 'Error formatting date';
+    }
+  }
+
+  async function fetchUsers() {
+    try {
+      const res = await fetch('/api/admin/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.status === 401) return handleUnauthorized();
+      const data = await res.json();
+      return data.users || [];
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      alert('Failed to load users');
+      return [];
+    }
+  }
+
+  async function renderUserList() {
+    const users = await fetchUsers();
+    const userList = document.getElementById('userList');
+    userList.innerHTML = '';
+
+    if (!users.length) {
+      userList.innerHTML = '<p>No users found</p>';
+      return;
+    }
+
+    users.forEach(user => {
+      const div = document.createElement('div');
+      div.className = 'user-item';
+      div.textContent = `${user.username} (${user.mobile})`;
+      div.onclick = () => showUserDetails(user.mobile);
+      userList.appendChild(div);
+    });
+  }
+
+  async function fetchUserDetails(mobile) {
+    const res = await fetch(`/api/admin/user-details/${mobile}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.status === 401) return handleUnauthorized();
+    return await res.json();
+  }
+
+  async function showUserDetails(mobile) {
+    const userDetailsDiv = document.getElementById('userDetails');
+    userDetailsDiv.style.display = 'block';
+
+    const { user, deposits, withdrawals } = await fetchUserDetails(mobile);
+
+    const formattedDeposits = await Promise.all(
+      deposits.map(async d => {
+        const date = await formatDate(d.created_at);
+        return `₹${d.amount} - ${date}`;
+      })
+    );
+
+    const formattedWithdrawals = await Promise.all(
+      withdrawals.map(async w => {
+        const date = await formatDate(w.created_at);
+        return `₹${w.amount} - ${date}`;
+      })
+    );
+
+    userDetailsDiv.innerHTML = `
+      <h3>User Details</h3>
+      <p><strong>Mobile:</strong> ${user.mobile}</p>
+      <p><strong>Username:</strong> ${user.username}</p>
+      <p><strong>Wallet Balance:</strong> ₹${user.wallet_balance}</p>
+      <div class="details-section">
+        <h4>Deposit History</h4>
+        ${formattedDeposits.length ? formattedDeposits.map(e => `<div>${e}</div>`).join('') : '<p>No deposits</p>'}
+      </div>
+      <div class="details-section">
+        <h4>Withdrawal History</h4>
+        ${formattedWithdrawals.length ? formattedWithdrawals.map(e => `<div>${e}</div>`).join('') : '<p>No withdrawals</p>'}
+      </div>
+    `;
+  }
+
+  renderUserList();
+</script>
+
+</body>
+</html>

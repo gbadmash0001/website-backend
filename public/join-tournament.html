@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Join Tournament</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background-color: #1e1e1e;
+      padding: 30px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      border: 1px solid #00c85366;
+      box-shadow: 0 0 15px rgba(0, 200, 83, 0.2);
+    }
+    select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: none;
+      background-color: #2a2a2a;
+      color: white;
+    }
+    button {
+      background-color: #00c853;
+      cursor: pointer;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .back-btn {
+      background-color: transparent;
+      border: 1px solid #00c853;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Join Tournament</h2>
+
+  <label for="matchType">Select Match Type:</label>
+  <select id="matchType" onchange="updateEntryFees()">
+    <option value="1">1v1</option>
+    <option value="2">2v2</option>
+    <option value="3">3v3</option>
+    <option value="4">4v4</option>
+  </select>
+
+  <label for="entryFee">Select Entry Fee:</label>
+  <select id="entryFee" onchange="updateReward()"></select>
+
+  <p><strong>Reward:</strong> <span id="reward">--</span> ₹</p>
+  <p><strong>Wallet Balance:</strong> <span id="wallet_balance">--</span> ₹</p>
+
+  <button onclick="confirmJoin()">Confirm</button>
+  <button class="back-btn" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+</div>
+
+<script>
+  const entryOptions = [20, 30, 40, 50, 100, 150, 200];
+  const user = JSON.parse(localStorage.getItem('user'));
+  const token = localStorage.getItem('token');
+
+  function handleUnauthorized(status) {
+    if (status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      alert('Session expired. Please log in again.');
+      window.location.href = 'login.html';
+      return true;
+    }
+    return false;
+  }
+
+  if (!user || !token) {
+    alert('Please login first.');
+    window.location.href = 'login.html';
+  }
+
+  async function fetchWalletBalance() {
+    try {
+      const res = await fetch('/api/wallet', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (handleUnauthorized(res.status)) return;
+
+      const data = await res.json();
+      user.wallet_balance = data.wallet_balance;
+      localStorage.setItem('user', JSON.stringify(user));
+      document.getElementById('wallet_balance').textContent = `₹${data.wallet_balance}`;
+
+    } catch (err) {
+      console.error('[wallet] Error:', err.message);
+      document.getElementById('wallet_balance').textContent = '₹--';
+    }
+  }
+
+  function updateEntryFees() {
+    const matchType = parseInt(document.getElementById("matchType").value);
+    const entryFeeSelect = document.getElementById("entryFee");
+    entryFeeSelect.innerHTML = "";
+
+    entryOptions.forEach(fee => {
+      const adjustedFee = fee * matchType;
+      const option = document.createElement("option");
+      option.value = adjustedFee;
+      option.text = `₹${adjustedFee}`;
+      entryFeeSelect.appendChild(option);
+    });
+
+    updateReward();
+  }
+
+  function updateReward() {
+    const entryFee = parseInt(document.getElementById("entryFee").value || 0);
+    document.getElementById("reward").textContent = (entryFee * 1.8).toFixed(0);
+  }
+
+  async function confirmJoin() {
+    const matchType = parseInt(document.getElementById("matchType").value);
+    const entryFee = parseInt(document.getElementById("entryFee").value);
+
+    if (![1, 2, 3, 4].includes(matchType)) {
+      alert('Invalid match type selected.');
+      return;
+    }
+
+    if (isNaN(entryFee) || entryFee <= 0) {
+      alert('Please select a valid entry fee.');
+      return;
+    }
+
+    if (user.wallet_balance < entryFee) {
+      alert('Insufficient wallet balance.');
+      return;
+    }
+
+    try {
+      const pendingRes = await fetch('/api/tournaments/pending', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (handleUnauthorized(pendingRes.status)) return;
+
+      const pendingData = await pendingRes.json();
+
+      if (pendingData.pending) {
+        alert('You already have a pending tournament.');
+        return;
+      }
+
+      const joinRes = await fetch('/api/tournaments/join', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ match_type: matchType, entry_fee: entryFee })
+      });
+
+      if (handleUnauthorized(joinRes.status)) return;
+
+      const joinData = await joinRes.json();
+
+      if (!joinRes.ok) {
+        const errMsg = joinData.errors
+          ? joinData.errors.map(e => e.msg).join('\n')
+          : joinData.error || 'Failed to join tournament';
+        alert(errMsg);
+        return;
+      }
+
+      alert(joinData.message || 'Joined successfully!');
+      await fetchWalletBalance();
+      window.location.href = 'dashboard.html';
+
+    } catch (err) {
+      console.error('[join] Error:', err);
+      alert(err.message || 'Something went wrong.');
+    }
+  }
+
+  fetchWalletBalance();
+  updateEntryFees();
+</script>
+
+</body>
+</html>

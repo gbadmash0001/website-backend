@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Signup - Free Fire Max Tournament</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      outline: none;
+      margin-bottom: 15px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background-color: #00c853;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+    }
+
+    .warning, .error-box {
+      background-color: #ffcc00;
+      color: #000;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 5px;
+      display: none;
+    }
+
+    .error-box {
+      background-color: #ff4444;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Signup</h2>
+    <form id="signupForm">
+      <label for="mobile">Mobile Number</label>
+      <input type="text" id="mobile" name="mobile" required>
+
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" required>
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required>
+
+      <label for="uid">In-Game UID</label>
+      <input type="text" id="uid" name="uid" required>
+
+      <button type="submit" class="btn">Signup</button>
+
+      <div id="warningBox" class="warning">
+        Please double-check your <strong>Mobile Number</strong> and <strong>In-Game UID</strong>. They cannot be changed later!<br><br>
+        Click <strong>Signup</strong> again to confirm and submit.
+      </div>
+
+      <div id="errorBox" class="error-box"></div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('signupForm');
+    const warningBox = document.getElementById('warningBox');
+    const errorBox = document.getElementById('errorBox');
+    let confirmed = false;
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      errorBox.style.display = "none";
+      errorBox.textContent = "";
+
+      const mobile = document.getElementById('mobile').value.trim().replace(/\D/g, '');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const uid = document.getElementById('uid').value.trim();
+
+      // 🧠 Frontend validation
+      if (!/^\d{10}$/.test(mobile)) {
+        showError("Mobile number must be exactly 10 digits.");
+        return;
+      }
+
+      if (username.length < 3) {
+        showError("Username must be at least 3 characters.");
+        return;
+      }
+
+      if (password.length < 6) {
+        showError("Password must be at least 6 characters.");
+        return;
+      }
+
+      if (uid.length < 6) {
+        showError("UID must be at least 6 characters.");
+        return;
+      }
+
+      if (!confirmed) {
+        warningBox.style.display = "block";
+        confirmed = true;
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mobile, username, password, uid })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          if (result.errors) {
+            showError(result.errors.map(err => err.msg).join("\n"));
+          } else {
+            showError(result.error || "Signup failed.");
+          }
+        } else {
+          localStorage.setItem("user", JSON.stringify(result.user));
+          window.location.href = "dashboard.html";
+        }
+      } catch (error) {
+        showError("Network error. Please try again.");
+      }
+    });
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.style.display = "block";
+    }
+  </script>
+</body>
+</html>
