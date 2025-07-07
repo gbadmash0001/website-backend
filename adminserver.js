@@ -4,7 +4,6 @@ const cors = require('cors');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const { body, validationResult } = require('express-validator');
-const { adminLogger, adminErrorLogger } = require('./logger');
 const app = express();
 const PORT = process.env.PORT || 3000;
 // Enable CORS for frontend access
@@ -101,7 +100,7 @@ app.post('/api/admin/signup', [
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[SIGNUP_FAIL_VALIDATION] ${JSON.stringify(errors.array())}`);
+    console.warn(`[SIGNUP_FAIL_VALIDATION] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -114,12 +113,12 @@ app.post('/api/admin/signup', [
       .select('id', { count: 'exact', head: true });
 
     if (countError) {
-      adminErrorLogger.error(`[COUNT_FAIL] ${countError.message}`);
+      console.error(`[COUNT_FAIL] ${countError.message}`);
       return res.status(500).json({ error: 'Admin limit check failed' });
     }
 
     if (adminCount && adminCount.length >= 1) {
-      adminLogger.info(`[SIGNUP_BLOCKED] Admin already exists`);
+      console.log(`[SIGNUP_BLOCKED] Admin already exists`);
       return res.status(403).json({ error: 'Admin already exists. Signup locked.' });
     }
 
@@ -129,7 +128,7 @@ app.post('/api/admin/signup', [
     });
 
     if (authError || !authData.user) {
-      adminErrorLogger.error(`[AUTH_FAIL] ${authError?.message}`);
+      console.error(`[AUTH_FAIL] ${authError?.message}`);
       return res.status(400).json({ error: 'Signup failed. Try different mobile.' });
     }
 
@@ -142,15 +141,15 @@ app.post('/api/admin/signup', [
       }]);
 
     if (insertError) {
-      adminErrorLogger.error(`[DB_INSERT_FAIL] ${insertError.message}`);
+      console.error(`[DB_INSERT_FAIL] ${insertError.message}`);
       return res.status(500).json({ error: 'Signup succeeded, but admin data failed.' });
     }
 
-    adminLogger.info(`[SIGNUP_SUCCESS] Mobile: ${mobile}, UID: ${authData.user.id}`);
+    console.log(`[SIGNUP_SUCCESS] Mobile: ${mobile}, UID: ${authData.user.id}`);
     res.status(201).json({ message: 'Admin signup successful.' });
 
   } catch (err) {
-    adminErrorLogger.error(`[UNEXPECTED_ERROR] ${err.message}`);
+    console.error(`[UNEXPECTED_ERROR] ${err.message}`);
     res.status(500).json({ error: 'Server error during signup.' });
   }
 });
@@ -169,7 +168,7 @@ app.post('/api/admin/login', [
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[LOGIN_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[LOGIN_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -182,7 +181,7 @@ app.post('/api/admin/login', [
     });
 
     if (loginError) {
-      adminLogger.warn(`[LOGIN_FAIL] Invalid credentials for ${username}`);
+      console.warn(`[LOGIN_FAIL] Invalid credentials for ${username}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -193,11 +192,11 @@ app.post('/api/admin/login', [
       .single();
 
     if (adminError || !adminData) {
-      adminErrorLogger.error(`[LOGIN_AUTH_UID_MISSING] UID: ${sessionData.user.id}, ${adminError?.message}`);
+      console.error(`[LOGIN_AUTH_UID_MISSING] UID: ${sessionData.user.id}, ${adminError?.message}`);
       return res.status(404).json({ error: 'Admin record not found' });
     }
 
-    adminLogger.info(`[LOGIN_SUCCESS] Admin: ${adminData.username}, Mobile: ${adminData.mobile}`);
+    console.log(`[LOGIN_SUCCESS] Admin: ${adminData.username}, Mobile: ${adminData.mobile}`);
     res.json({
       message: 'Login successful',
       username: adminData.username,
@@ -205,7 +204,7 @@ app.post('/api/admin/login', [
     });
 
   } catch (err) {
-    adminErrorLogger.error(`[LOGIN_EXCEPTION] ${err.message}`);
+    console.error(`[LOGIN_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -215,7 +214,7 @@ app.get('/api/admin/wallet', extractToken, async (req, res) => {
   const { data: user, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[WALLET_AUTH_FAIL] Invalid or expired token`);
+    console.warn(`[WALLET_AUTH_FAIL] Invalid or expired token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
@@ -227,15 +226,15 @@ app.get('/api/admin/wallet', extractToken, async (req, res) => {
       .single();
 
     if (error) {
-      adminErrorLogger.error(`[WALLET_DB_ERROR] ${error.message}`);
+      console.error(`[WALLET_DB_ERROR] ${error.message}`);
       throw error;
     }
 
-    adminLogger.info(`[WALLET_ACCESS] Admin UID: ${user.id} checked balance`);
+    console.log(`[WALLET_ACCESS] Admin UID: ${user.id} checked balance`);
     res.json({ balance: data.balance });
 
   } catch (err) {
-    adminErrorLogger.error(`[WALLET_FETCH_FAIL] ${err.message}`);
+    console.error(`[WALLET_FETCH_FAIL] ${err.message}`);
     res.status(500).json({ error: 'Failed to fetch balance' });
   }
 });
@@ -255,13 +254,13 @@ app.post('/api/admin/wallet/update', [
   const { data: user, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[WALLET_UPDATE_UNAUTHORIZED] Invalid or expired token`);
+    console.warn(`[WALLET_UPDATE_UNAUTHORIZED] Invalid or expired token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[WALLET_UPDATE_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[WALLET_UPDATE_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -275,7 +274,7 @@ app.post('/api/admin/wallet/update', [
       .single();
 
     if (fetchError) {
-      adminErrorLogger.error(`[WALLET_FETCH_ERROR] ${fetchError.message}`);
+      console.error(`[WALLET_FETCH_ERROR] ${fetchError.message}`);
       return res.status(500).json({ error: 'Could not retrieve wallet balance' });
     }
 
@@ -284,7 +283,7 @@ app.post('/api/admin/wallet/update', [
       : data.balance - amount;
 
     if (newBalance < 0) {
-      adminLogger.warn(`[WALLET_UPDATE_BLOCKED] Attempted overdraft by UID: ${user.id}`);
+      console.warn(`[WALLET_UPDATE_BLOCKED] Attempted overdraft by UID: ${user.id}`);
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
@@ -293,7 +292,7 @@ app.post('/api/admin/wallet/update', [
       .upsert({ id: 1, balance: newBalance }, { onConflict: 'id' });
 
     if (updateError) {
-      adminErrorLogger.error(`[WALLET_UPDATE_FAIL] ${updateError.message}`);
+      console.error(`[WALLET_UPDATE_FAIL] ${updateError.message}`);
       return res.status(500).json({ error: 'Failed to update wallet balance' });
     }
 
@@ -311,15 +310,15 @@ app.post('/api/admin/wallet/update', [
       }]);
 
     if (insertError) {
-      adminErrorLogger.error(`[WALLET_LOG_INSERT_FAIL] ${insertError.message}`);
+      console.error(`[WALLET_LOG_INSERT_FAIL] ${insertError.message}`);
       return res.status(500).json({ error: 'Balance updated, but failed to log transaction' });
     }
 
-    adminLogger.info(`[WALLET_UPDATED] UID: ${user.id}, Action: ${action}, Amount: ${amount}, NewBalance: ${newBalance}`);
+    console.log(`[WALLET_UPDATED] UID: ${user.id}, Action: ${action}, Amount: ${amount}, NewBalance: ${newBalance}`);
     res.json({ newBalance });
 
   } catch (err) {
-    adminErrorLogger.error(`[WALLET_UPDATE_EXCEPTION] ${err.message}`);
+    console.error(`[WALLET_UPDATE_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Failed to update balance' });
   }
 });
@@ -329,7 +328,7 @@ app.get('/api/admin/transactions', extractToken, async (req, res) => {
   const { data: user, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[TXN_FETCH_UNAUTHORIZED] Invalid or missing token`);
+    console.warn(`[TXN_FETCH_UNAUTHORIZED] Invalid or missing token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
@@ -340,15 +339,15 @@ app.get('/api/admin/transactions', extractToken, async (req, res) => {
       .order('date', { ascending: false });
 
     if (error) {
-      adminErrorLogger.error(`[TXN_DB_ERROR] ${error.message}`);
+      console.error(`[TXN_DB_ERROR] ${error.message}`);
       return res.status(500).json({ error: 'Failed to fetch transactions' });
     }
 
-    adminLogger.info(`[TXN_FETCH_SUCCESS] UID: ${user.id} retrieved ${data.length} transactions`);
+    console.log(`[TXN_FETCH_SUCCESS] UID: ${user.id} retrieved ${data.length} transactions`);
     res.json({ success: true, transactions: data || [] });
 
   } catch (err) {
-    adminErrorLogger.error(`[TXN_FETCH_EXCEPTION] ${err.message}`);
+    console.error(`[TXN_FETCH_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -358,7 +357,7 @@ app.get('/api/admin/deposit-requests', extractToken, async (req, res) => {
   const { data: user, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[DEPOSIT_REQ_UNAUTHORIZED] Token invalid or missing`);
+    console.warn(`[DEPOSIT_REQ_UNAUTHORIZED] Token invalid or missing`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
@@ -380,15 +379,15 @@ app.get('/api/admin/deposit-requests', extractToken, async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      adminErrorLogger.error(`[DEPOSIT_REQ_DB_FAIL] ${error.message}`);
+      console.error(`[DEPOSIT_REQ_DB_FAIL] ${error.message}`);
       throw error;
     }
 
-    adminLogger.info(`[DEPOSIT_REQ_SUCCESS] UID: ${user.id} fetched ${data.length} pending deposit(s)`);
+    console.log(`[DEPOSIT_REQ_SUCCESS] UID: ${user.id} fetched ${data.length} pending deposit(s)`);
     res.json(data);
-    
+
   } catch (err) {
-    adminErrorLogger.error(`[DEPOSIT_REQ_EXCEPTION] ${err.message}`);
+    console.error(`[DEPOSIT_REQ_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Failed to fetch deposit requests' });
   }
 });
@@ -403,13 +402,13 @@ app.post('/api/admin/approve-deposit', [
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[APPROVE_UNAUTHORIZED] Token invalid or missing`);
+    console.warn(`[APPROVE_UNAUTHORIZED] Token invalid or missing`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[APPROVE_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[APPROVE_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -423,12 +422,12 @@ app.post('/api/admin/approve-deposit', [
       .single();
 
     if (depositCheckErr || !deposit) {
-      adminErrorLogger.error(`[APPROVE_DEPOSIT_FETCH_FAIL] ID: ${depositId} — ${depositCheckErr?.message}`);
+      console.error(`[APPROVE_DEPOSIT_FETCH_FAIL] ID: ${depositId} — ${depositCheckErr?.message}`);
       throw new Error('Deposit not found');
     }
 
     if (deposit.status !== 'pending') {
-      adminLogger.warn(`[APPROVE_ALREADY_PROCESSED] ID: ${depositId}, Status: ${deposit.status}`);
+      console.warn(`[APPROVE_ALREADY_PROCESSED] ID: ${depositId}, Status: ${deposit.status}`);
       return res.status(400).json({ error: 'This deposit has already been processed.' });
     }
 
@@ -439,7 +438,7 @@ app.post('/api/admin/approve-deposit', [
       .single();
 
     if (userErr || !user) {
-      adminErrorLogger.error(`[APPROVE_USER_FETCH_FAIL] UID: ${userId} — ${userErr?.message}`);
+      console.error(`[APPROVE_USER_FETCH_FAIL] UID: ${userId} — ${userErr?.message}`);
       throw new Error('User not found');
     }
 
@@ -449,7 +448,7 @@ app.post('/api/admin/approve-deposit', [
       .eq('id', depositId);
 
     if (depositErr) {
-      adminErrorLogger.error(`[APPROVE_DEPOSIT_UPDATE_FAIL] ID: ${depositId} — ${depositErr.message}`);
+      console.error(`[APPROVE_DEPOSIT_UPDATE_FAIL] ID: ${depositId} — ${depositErr.message}`);
       throw depositErr;
     }
 
@@ -460,7 +459,7 @@ app.post('/api/admin/approve-deposit', [
       .eq('id', userId);
 
     if (balanceErr) {
-      adminErrorLogger.error(`[USER_BALANCE_UPDATE_FAIL] UID: ${userId} — ${balanceErr.message}`);
+      console.error(`[USER_BALANCE_UPDATE_FAIL] UID: ${userId} — ${balanceErr.message}`);
       throw new Error('Failed to update user wallet');
     }
 
@@ -471,7 +470,7 @@ app.post('/api/admin/approve-deposit', [
       .single();
 
     if (adminFetchErr || !adminWallet) {
-      adminErrorLogger.error(`[ADMIN_WALLET_FETCH_FAIL] ${adminFetchErr?.message}`);
+      console.error(`[ADMIN_WALLET_FETCH_FAIL] ${adminFetchErr?.message}`);
       throw new Error('Admin wallet not found');
     }
 
@@ -482,7 +481,7 @@ app.post('/api/admin/approve-deposit', [
       .eq('id', 1);
 
     if (adminUpdateErr) {
-      adminErrorLogger.error(`[ADMIN_WALLET_UPDATE_FAIL] ${adminUpdateErr.message}`);
+      console.error(`[ADMIN_WALLET_UPDATE_FAIL] ${adminUpdateErr.message}`);
       throw new Error('Failed to update admin wallet');
     }
 
@@ -495,10 +494,9 @@ app.post('/api/admin/approve-deposit', [
       }]);
 
     if (notifyErr) {
-      adminErrorLogger.error(`[NOTIFY_FAIL] UID: ${userId} — ${notifyErr.message}`);
+      console.error(`[NOTIFY_FAIL] UID: ${userId} — ${notifyErr.message}`);
     }
 
-    // Transaction record
     const { error: txnErr } = await supabase
       .from('admin_transactions')
       .insert([{
@@ -509,14 +507,14 @@ app.post('/api/admin/approve-deposit', [
       }]);
 
     if (txnErr) {
-      adminErrorLogger.error(`[TXN_LOG_FAIL] Mobile: ${user.mobile} — ${txnErr.message}`);
+      console.error(`[TXN_LOG_FAIL] Mobile: ${user.mobile} — ${txnErr.message}`);
     }
 
-    adminLogger.info(`[DEPOSIT_APPROVED] Admin UID: ${sessionUser.user.id}, User: ${user.mobile}, Amount: ₹${amount}`);
+    console.log(`[DEPOSIT_APPROVED] Admin UID: ${sessionUser.user.id}, User: ${user.mobile}, Amount: ₹${amount}`);
     res.json({ message: 'Deposit approved successfully' });
 
   } catch (err) {
-    adminErrorLogger.error(`[APPROVE_EXCEPTION] ${err.message}`);
+    console.error(`[APPROVE_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: err.message || 'Approval failed' });
   }
 });
@@ -530,13 +528,13 @@ app.post('/api/admin/reject-deposit', [
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[REJECT_UNAUTHORIZED] Invalid or expired token`);
+    console.warn(`[REJECT_UNAUTHORIZED] Invalid or expired token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[REJECT_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[REJECT_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -549,7 +547,7 @@ app.post('/api/admin/reject-deposit', [
       .eq('id', depositId);
 
     if (depositErr) {
-      adminErrorLogger.error(`[REJECT_DEPOSIT_UPDATE_FAIL] ID: ${depositId} — ${depositErr.message}`);
+      console.error(`[REJECT_DEPOSIT_UPDATE_FAIL] ID: ${depositId} — ${depositErr.message}`);
       throw depositErr;
     }
 
@@ -562,14 +560,14 @@ app.post('/api/admin/reject-deposit', [
       }]);
 
     if (notificationErr) {
-      adminErrorLogger.error(`[REJECT_NOTIFY_FAIL] UID: ${userId} — ${notificationErr.message}`);
+      console.error(`[REJECT_NOTIFY_FAIL] UID: ${userId} — ${notificationErr.message}`);
     }
 
-    adminLogger.info(`[DEPOSIT_REJECTED] Admin UID: ${sessionUser.user.id}, Target UID: ${userId}, Deposit ID: ${depositId}`);
+    console.log(`[DEPOSIT_REJECTED] Admin UID: ${sessionUser.user.id}, Target UID: ${userId}, Deposit ID: ${depositId}`);
     res.json({ message: 'Deposit rejected successfully' });
 
   } catch (err) {
-    adminErrorLogger.error(`[REJECT_EXCEPTION] ${err.message}`);
+    console.error(`[REJECT_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Failed to reject deposit request' });
   }
 });
@@ -579,7 +577,7 @@ app.get('/api/admin/withdrawals', extractToken, async (req, res) => {
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[WITHDRAWALS_UNAUTHORIZED] Invalid token`);
+    console.warn(`[WITHDRAWALS_UNAUTHORIZED] Invalid token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
@@ -602,15 +600,15 @@ app.get('/api/admin/withdrawals', extractToken, async (req, res) => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      adminErrorLogger.error(`[WITHDRAWALS_DB_ERROR] ${error.message}`);
+      console.error(`[WITHDRAWALS_DB_ERROR] ${error.message}`);
       return res.status(500).json({ error: error.message });
     }
 
-    adminLogger.info(`[WITHDRAWALS_FETCHED] Admin UID: ${sessionUser.user.id} retrieved ${data.length} pending withdrawal(s)`);
+    console.log(`[WITHDRAWALS_FETCHED] Admin UID: ${sessionUser.user.id} retrieved ${data.length} pending withdrawal(s)`);
     res.json(data);
 
   } catch (err) {
-    adminErrorLogger.error(`[WITHDRAWALS_FETCH_EXCEPTION] ${err.message}`);
+    console.error(`[WITHDRAWALS_FETCH_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Failed to retrieve withdrawals' });
   }
 });
@@ -636,13 +634,13 @@ app.post('/api/admin/withdrawals/approve', [
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[WITHDRAW_APPROVE_UNAUTHORIZED] Invalid or expired token`);
+    console.warn(`[WITHDRAW_APPROVE_UNAUTHORIZED] Invalid or expired token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[WITHDRAW_APPROVE_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[WITHDRAW_APPROVE_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -657,7 +655,7 @@ app.post('/api/admin/withdrawals/approve', [
       .single();
 
     if (withdrawalError || !withdrawal) {
-      adminErrorLogger.error(`[WITHDRAW_FETCH_INVALID] ID: ${requestId} — ${withdrawalError?.message}`);
+      console.error(`[WITHDRAW_FETCH_INVALID] ID: ${requestId} — ${withdrawalError?.message}`);
       return res.status(400).json({ error: 'Invalid or already processed withdrawal request' });
     }
 
@@ -668,12 +666,12 @@ app.post('/api/admin/withdrawals/approve', [
       .single();
 
     if (userError || !user) {
-      adminErrorLogger.error(`[USER_FETCH_FAIL] Mobile: ${mobile} — ${userError?.message}`);
+      console.error(`[USER_FETCH_FAIL] Mobile: ${mobile} — ${userError?.message}`);
       return res.status(404).json({ error: 'User not found' });
     }
 
     if ((user.wallet_balance || 0) < amount) {
-      adminLogger.warn(`[WITHDRAW_BALANCE_INSUFFICIENT] UID: ${user.id}, Wallet: ₹${user.wallet_balance}, Requested: ₹${amount}`);
+      console.warn(`[WITHDRAW_BALANCE_INSUFFICIENT] UID: ${user.id}, Wallet: ₹${user.wallet_balance}, Requested: ₹${amount}`);
       return res.status(400).json({ error: 'Insufficient wallet balance' });
     }
 
@@ -684,7 +682,7 @@ app.post('/api/admin/withdrawals/approve', [
       .single();
 
     if (adminWalletErr || !adminWallet) {
-      adminErrorLogger.error(`[ADMIN_WALLET_FETCH_FAIL] ${adminWalletErr?.message}`);
+      console.error(`[ADMIN_WALLET_FETCH_FAIL] ${adminWalletErr?.message}`);
       return res.status(500).json({ error: 'Admin wallet not found' });
     }
 
@@ -697,7 +695,7 @@ app.post('/api/admin/withdrawals/approve', [
       .eq('id', user.id);
 
     if (updateUserErr) {
-      adminErrorLogger.error(`[USER_BALANCE_UPDATE_FAIL] UID: ${user.id} — ${updateUserErr.message}`);
+      console.error(`[USER_BALANCE_UPDATE_FAIL] UID: ${user.id} — ${updateUserErr.message}`);
       return res.status(500).json({ error: 'Failed to update user balance' });
     }
 
@@ -707,7 +705,7 @@ app.post('/api/admin/withdrawals/approve', [
       .eq('id', 1);
 
     if (updateAdminWalletErr) {
-      adminErrorLogger.error(`[ADMIN_WALLET_UPDATE_FAIL] ${updateAdminWalletErr.message}`);
+      console.error(`[ADMIN_WALLET_UPDATE_FAIL] ${updateAdminWalletErr.message}`);
       return res.status(500).json({ error: 'Failed to update admin balance' });
     }
 
@@ -717,7 +715,7 @@ app.post('/api/admin/withdrawals/approve', [
       .eq('id', requestId);
 
     if (updateWithdrawalErr) {
-      adminErrorLogger.error(`[WITHDRAW_STATUS_UPDATE_FAIL] ID: ${requestId} — ${updateWithdrawalErr.message}`);
+      console.error(`[WITHDRAW_STATUS_UPDATE_FAIL] ID: ${requestId} — ${updateWithdrawalErr.message}`);
       return res.status(500).json({ error: 'Failed to update withdrawal status' });
     }
 
@@ -730,7 +728,7 @@ app.post('/api/admin/withdrawals/approve', [
       }]);
 
     if (notificationErr) {
-      adminErrorLogger.error(`[NOTIFY_FAIL] UID: ${user.id} — ${notificationErr.message}`);
+      console.error(`[NOTIFY_FAIL] UID: ${user.id} — ${notificationErr.message}`);
     }
 
     const { error: historyErr } = await supabase
@@ -743,14 +741,14 @@ app.post('/api/admin/withdrawals/approve', [
       }]);
 
     if (historyErr) {
-      adminErrorLogger.error(`[TXN_LOG_FAIL] Mobile: ${user.mobile} — ${historyErr.message}`);
+      console.error(`[TXN_LOG_FAIL] Mobile: ${user.mobile} — ${historyErr.message}`);
     }
 
-    adminLogger.info(`[WITHDRAW_APPROVED] Admin UID: ${sessionUser.user.id}, User: ${user.mobile}, ₹${amount}`);
+    console.log(`[WITHDRAW_APPROVED] Admin UID: ${sessionUser.user.id}, User: ${user.mobile}, ₹${amount}`);
     res.json({ message: 'Withdrawal approved successfully' });
 
   } catch (err) {
-    adminErrorLogger.error(`[WITHDRAW_APPROVE_EXCEPTION] ${err.message}`);
+    console.error(`[WITHDRAW_APPROVE_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: err.message || 'Approval failed' });
   }
 });
@@ -770,13 +768,13 @@ app.post('/api/admin/withdrawals/reject', [
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[WITHDRAW_REJECT_UNAUTHORIZED] Invalid token`);
+    console.warn(`[WITHDRAW_REJECT_UNAUTHORIZED] Invalid token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[WITHDRAW_REJECT_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[WITHDRAW_REJECT_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -789,7 +787,7 @@ app.post('/api/admin/withdrawals/reject', [
       .eq('id', requestId);
 
     if (updateErr) {
-      adminErrorLogger.error(`[WITHDRAW_REJECT_UPDATE_FAIL] ID: ${requestId} — ${updateErr.message}`);
+      console.error(`[WITHDRAW_REJECT_UPDATE_FAIL] ID: ${requestId} — ${updateErr.message}`);
       return res.status(500).json({ error: 'Failed to update withdrawal status' });
     }
 
@@ -802,14 +800,14 @@ app.post('/api/admin/withdrawals/reject', [
       }]);
 
     if (notificationErr) {
-      adminErrorLogger.error(`[WITHDRAW_REJECT_NOTIFY_FAIL] UID: ${userId} — ${notificationErr.message}`);
+      console.error(`[WITHDRAW_REJECT_NOTIFY_FAIL] UID: ${userId} — ${notificationErr.message}`);
     }
 
-    adminLogger.info(`[WITHDRAW_REJECTED] Admin UID: ${sessionUser.user.id}, User UID: ${userId}, Request ID: ${requestId}`);
+    console.log(`[WITHDRAW_REJECTED] Admin UID: ${sessionUser.user.id}, User UID: ${userId}, Request ID: ${requestId}`);
     res.json({ message: 'Withdrawal rejected successfully' });
 
   } catch (err) {
-    adminErrorLogger.error(`[WITHDRAW_REJECT_EXCEPTION] ${err.message}`);
+    console.error(`[WITHDRAW_REJECT_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: err.message || 'Rejection failed' });
   }
 });
@@ -819,7 +817,7 @@ app.get('/api/admin/tournaments', extractToken, async (req, res) => {
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[TOURNAMENTS_UNAUTHORIZED] Invalid token`);
+    console.warn(`[TOURNAMENTS_UNAUTHORIZED] Invalid token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
@@ -829,7 +827,7 @@ app.get('/api/admin/tournaments', extractToken, async (req, res) => {
       .select('id, player1_id, player2_id, match_type, entry_fee, status');
 
     if (regError) {
-      adminErrorLogger.error(`[TOURNAMENTS_REG_FETCH_FAIL] ${regError.message}`);
+      console.error(`[TOURNAMENTS_REG_FETCH_FAIL] ${regError.message}`);
       throw regError;
     }
 
@@ -838,7 +836,7 @@ app.get('/api/admin/tournaments', extractToken, async (req, res) => {
       .select('id, mobile');
 
     if (userError) {
-      adminErrorLogger.error(`[TOURNAMENTS_USER_FETCH_FAIL] ${userError.message}`);
+      console.error(`[TOURNAMENTS_USER_FETCH_FAIL] ${userError.message}`);
       throw userError;
     }
 
@@ -877,14 +875,14 @@ app.get('/api/admin/tournaments', extractToken, async (req, res) => {
       }
     }
 
-    adminLogger.info(`[TOURNAMENTS_FETCH_SUCCESS] UID: ${sessionUser.user.id}, Matches: ${matchedPairs.length}, Waiting groups: ${Object.keys(unmatchedPlayers).length}`);
+    console.log(`[TOURNAMENTS_FETCH_SUCCESS] UID: ${sessionUser.user.id}, Matches: ${matchedPairs.length}, Waiting groups: ${Object.keys(unmatchedPlayers).length}`);
     res.json({
       matches: matchedPairs,
       waitingPlayers: unmatchedPlayers,
     });
 
   } catch (err) {
-    adminErrorLogger.error(`[TOURNAMENTS_EXCEPTION] ${err.message}`);
+    console.error(`[TOURNAMENTS_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Failed to fetch tournaments' });
   }
 });
@@ -905,13 +903,13 @@ app.post('/api/admin/tournaments/winner', [
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[TOURNAMENT_WINNER_UNAUTHORIZED] Invalid token`);
+    console.warn(`[TOURNAMENT_WINNER_UNAUTHORIZED] Invalid token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[TOURNAMENT_WINNER_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[TOURNAMENT_WINNER_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -925,7 +923,7 @@ app.post('/api/admin/tournaments/winner', [
       .single();
 
     if (matchError || !matchData) {
-      adminErrorLogger.error(`[MATCH_FETCH_FAIL] ID: ${matchId} — ${matchError?.message}`);
+      console.error(`[MATCH_FETCH_FAIL] ID: ${matchId} — ${matchError?.message}`);
       throw new Error("Match not found");
     }
 
@@ -941,7 +939,7 @@ app.post('/api/admin/tournaments/winner', [
       .single();
 
     if (winnerFetchErr || !winner) {
-      adminErrorLogger.error(`[WINNER_FETCH_FAIL] UID: ${winnerId} — ${winnerFetchErr?.message}`);
+      console.error(`[WINNER_FETCH_FAIL] UID: ${winnerId} — ${winnerFetchErr?.message}`);
       throw new Error("Winner not found");
     }
 
@@ -952,7 +950,7 @@ app.post('/api/admin/tournaments/winner', [
       .eq('id', winnerId);
 
     if (winnerUpdateErr) {
-      adminErrorLogger.error(`[WINNER_WALLET_UPDATE_FAIL] UID: ${winnerId} — ${winnerUpdateErr.message}`);
+      console.error(`[WINNER_WALLET_UPDATE_FAIL] UID: ${winnerId} — ${winnerUpdateErr.message}`);
       throw new Error("Failed to update winner’s wallet");
     }
 
@@ -963,7 +961,7 @@ app.post('/api/admin/tournaments/winner', [
       .single();
 
     if (adminFetchErr || !adminData) {
-      adminErrorLogger.error(`[ADMIN_PROFITS_FETCH_FAIL] ${adminFetchErr?.message}`);
+      console.error(`[ADMIN_PROFITS_FETCH_FAIL] ${adminFetchErr?.message}`);
       throw new Error("Admin wallet not found");
     }
 
@@ -974,7 +972,7 @@ app.post('/api/admin/tournaments/winner', [
       .eq('id', 1);
 
     if (adminUpdateErr) {
-      adminErrorLogger.error(`[ADMIN_PROFITS_UPDATE_FAIL] ${adminUpdateErr.message}`);
+      console.error(`[ADMIN_PROFITS_UPDATE_FAIL] ${adminUpdateErr.message}`);
       throw new Error("Failed to update admin profits");
     }
 
@@ -984,7 +982,7 @@ app.post('/api/admin/tournaments/winner', [
       .eq('id', matchId);
 
     if (matchDeleteErr) {
-      adminErrorLogger.error(`[MATCH_DELETE_FAIL] ID: ${matchId} — ${matchDeleteErr.message}`);
+      console.error(`[MATCH_DELETE_FAIL] ID: ${matchId} — ${matchDeleteErr.message}`);
       throw new Error("Failed to delete match");
     }
 
@@ -1005,14 +1003,14 @@ app.post('/api/admin/tournaments/winner', [
       ]);
 
     if (notifyErr) {
-      adminErrorLogger.error(`[NOTIFY_WINNER_FAIL] UID: ${winnerId}, ${notifyErr.message}`);
+      console.error(`[NOTIFY_WINNER_FAIL] UID: ${winnerId}, ${notifyErr.message}`);
     }
 
-    adminLogger.info(`[TOURNAMENT_WINNER_DECLARED] Match ID: ${matchId}, Winner: ${winnerId}, Loser: ${loserId}, Reward: ₹${reward}, Profit: ₹${leftoverAmount}`);
+    console.log(`[TOURNAMENT_WINNER_DECLARED] Match ID: ${matchId}, Winner: ${winnerId}, Loser: ${loserId}, Reward: ₹${reward}, Profit: ₹${leftoverAmount}`);
     res.json({ message: "Winner declared, reward credited, and profits updated successfully" });
 
   } catch (err) {
-    adminErrorLogger.error(`[WINNER_DECISION_EXCEPTION] ${err.message}`);
+    console.error(`[WINNER_DECISION_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: err.message || "Failed to process winner declaration" });
   }
 });
@@ -1032,13 +1030,13 @@ app.post('/api/admin/tournaments/cancel', [
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[TOURNAMENT_CANCEL_UNAUTHORIZED] Invalid token`);
+    console.warn(`[TOURNAMENT_CANCEL_UNAUTHORIZED] Invalid token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[TOURNAMENT_CANCEL_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[TOURNAMENT_CANCEL_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -1052,12 +1050,12 @@ app.post('/api/admin/tournaments/cancel', [
       .single();
 
     if (matchError || !matchData) {
-      adminErrorLogger.error(`[MATCH_FETCH_FAIL] ID: ${registrationId} — ${matchError?.message}`);
+      console.error(`[MATCH_FETCH_FAIL] ID: ${registrationId} — ${matchError?.message}`);
       return res.status(404).json({ error: 'Tournament registration not found' });
     }
 
     if (matchData.status !== 'pending') {
-      adminLogger.warn(`[MATCH_NOT_PENDING] ID: ${registrationId}, Status: ${matchData.status}`);
+      console.warn(`[MATCH_NOT_PENDING] ID: ${registrationId}, Status: ${matchData.status}`);
       return res.status(400).json({ error: 'Only pending tournaments can be cancelled' });
     }
 
@@ -1070,7 +1068,7 @@ app.post('/api/admin/tournaments/cancel', [
       .single();
 
     if (userError || !userData) {
-      adminErrorLogger.error(`[USER_FETCH_FAIL] UID: ${player1_id} — ${userError?.message}`);
+      console.error(`[USER_FETCH_FAIL] UID: ${player1_id} — ${userError?.message}`);
       return res.status(404).json({ error: 'User not found for refund' });
     }
 
@@ -1082,7 +1080,7 @@ app.post('/api/admin/tournaments/cancel', [
       .eq('id', player1_id);
 
     if (refundError) {
-      adminErrorLogger.error(`[REFUND_FAIL] UID: ${player1_id} — ${refundError.message}`);
+      console.error(`[REFUND_FAIL] UID: ${player1_id} — ${refundError.message}`);
       throw refundError;
     }
 
@@ -1092,7 +1090,7 @@ app.post('/api/admin/tournaments/cancel', [
       .eq('id', registrationId);
 
     if (deleteError) {
-      adminErrorLogger.error(`[MATCH_DELETE_FAIL] ID: ${registrationId} — ${deleteError.message}`);
+      console.error(`[MATCH_DELETE_FAIL] ID: ${registrationId} — ${deleteError.message}`);
       throw deleteError;
     }
 
@@ -1105,14 +1103,14 @@ app.post('/api/admin/tournaments/cancel', [
       }]);
 
     if (notifyError) {
-      adminErrorLogger.error(`[NOTIFY_FAIL] UID: ${player1_id} — ${notifyError.message}`);
+      console.error(`[NOTIFY_FAIL] UID: ${player1_id} — ${notifyError.message}`);
     }
 
-    adminLogger.info(`[TOURNAMENT_CANCELLED] Admin UID: ${sessionUser.user.id}, Player UID: ${player1_id}, Match ID: ${registrationId}, Refunded: ₹${entry_fee}`);
+    console.log(`[TOURNAMENT_CANCELLED] Admin UID: ${sessionUser.user.id}, Player UID: ${player1_id}, Match ID: ${registrationId}, Refunded: ₹${entry_fee}`);
     res.json({ message: 'Tournament cancelled and entry fee refunded successfully.' });
 
   } catch (err) {
-    adminErrorLogger.error(`[CANCEL_EXCEPTION] ${err.message}`);
+    console.error(`[CANCEL_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Failed to cancel tournament' });
   }
 });
@@ -1122,7 +1120,7 @@ app.get('/api/admin/profits', extractToken, async (req, res) => {
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[PROFITS_UNAUTHORIZED] Invalid or expired token`);
+    console.warn(`[PROFITS_UNAUTHORIZED] Invalid or expired token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
@@ -1134,15 +1132,15 @@ app.get('/api/admin/profits', extractToken, async (req, res) => {
       .single();
 
     if (error) {
-      adminErrorLogger.error(`[PROFITS_FETCH_FAIL] ${error.message}`);
+      console.error(`[PROFITS_FETCH_FAIL] ${error.message}`);
       throw error;
     }
 
-    adminLogger.info(`[PROFITS_FETCH_SUCCESS] Admin UID: ${sessionUser.user.id}, Profits: ₹${data.profits}`);
+    console.log(`[PROFITS_FETCH_SUCCESS] Admin UID: ${sessionUser.user.id}, Profits: ₹${data.profits}`);
     res.json({ profits: data.profits });
 
   } catch (err) {
-    adminErrorLogger.error(`[PROFITS_EXCEPTION] ${err.message}`);
+    console.error(`[PROFITS_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: "Failed to fetch profits" });
   }
 });
@@ -1152,7 +1150,7 @@ app.get('/api/admin/users', extractToken, async (req, res) => {
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[USERS_UNAUTHORIZED] Invalid or expired token`);
+    console.warn(`[USERS_UNAUTHORIZED] Invalid or expired token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
@@ -1167,15 +1165,15 @@ app.get('/api/admin/users', extractToken, async (req, res) => {
       .range(start, end);
 
     if (error) {
-      adminErrorLogger.error(`[USERS_FETCH_FAIL] Page: ${page}, Limit: ${limit} — ${error.message}`);
+      console.error(`[USERS_FETCH_FAIL] Page: ${page}, Limit: ${limit} — ${error.message}`);
       throw error;
     }
 
-    adminLogger.info(`[USERS_FETCH_SUCCESS] UID: ${sessionUser.user.id}, Page: ${page}, Count: ${data.length}`);
+    console.log(`[USERS_FETCH_SUCCESS] UID: ${sessionUser.user.id}, Page: ${page}, Count: ${data.length}`);
     res.json({ users: data, page: Number(page), limit: Number(limit) });
 
   } catch (err) {
-    adminErrorLogger.error(`[USERS_EXCEPTION] ${err.message}`);
+    console.error(`[USERS_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
@@ -1185,7 +1183,7 @@ app.get('/api/admin/user-details/:mobile', extractToken, async (req, res) => {
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[USER_DETAILS_UNAUTHORIZED] Invalid token`);
+    console.warn(`[USER_DETAILS_UNAUTHORIZED] Invalid token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
@@ -1200,7 +1198,7 @@ app.get('/api/admin/user-details/:mobile', extractToken, async (req, res) => {
       .single();
 
     if (userError || !user) {
-      adminLogger.warn(`[USER_NOT_FOUND] Mobile: ${mobile}`);
+      console.warn(`[USER_NOT_FOUND] Mobile: ${mobile}`);
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -1222,11 +1220,11 @@ app.get('/api/admin/user-details/:mobile', extractToken, async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    adminLogger.info(`[USER_DETAILS_FETCHED] Admin UID: ${sessionUser.user.id}, Mobile: ${mobile}`);
+    console.log(`[USER_DETAILS_FETCHED] Admin UID: ${sessionUser.user.id}, Mobile: ${mobile}`);
     res.json({ user, deposits, withdrawals });
 
   } catch (err) {
-    adminErrorLogger.error(`[USER_DETAILS_EXCEPTION] Mobile: ${mobile} — ${err.message}`);
+    console.error(`[USER_DETAILS_EXCEPTION] Mobile: ${mobile} — ${err.message}`);
     res.status(500).json({ error: 'Failed to fetch user details' });
   }
 });
@@ -1244,13 +1242,13 @@ app.post('/api/admin/send-notification', [
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[NOTIFY_UNAUTHORIZED] Invalid token`);
+    console.warn(`[NOTIFY_UNAUTHORIZED] Invalid token`);
     return res.status(401).json({ error: 'Unauthorized access' });
   }
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    adminLogger.warn(`[NOTIFY_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
+    console.warn(`[NOTIFY_VALIDATION_FAIL] ${JSON.stringify(errors.array())}`);
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -1265,15 +1263,15 @@ app.post('/api/admin/send-notification', [
       }]);
 
     if (error) {
-      adminErrorLogger.error(`[NOTIFY_INSERT_FAIL] ${error.message}`);
+      console.error(`[NOTIFY_INSERT_FAIL] ${error.message}`);
       throw error;
     }
 
-    adminLogger.info(`[NOTIFY_SENT] Admin UID: ${sessionUser.user.id}, Message: ${message.slice(0, 60)}...`);
+    console.log(`[NOTIFY_SENT] Admin UID: ${sessionUser.user.id}, Message: ${message.slice(0, 60)}...`);
     res.json({ message: 'Notification sent successfully.' });
 
   } catch (err) {
-    adminErrorLogger.error(`[NOTIFY_EXCEPTION] ${err.message}`);
+    console.error(`[NOTIFY_EXCEPTION] ${err.message}`);
     res.status(500).json({ error: 'Failed to send notification.' });
   }
 });
@@ -1283,7 +1281,7 @@ app.get('/api/admin/notifications', extractToken, async (req, res) => {
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 
   if (authError) {
-    adminLogger.warn(`[NOTIFICATIONS_UNAUTHORIZED] Invalid token`);
+    console.warn(`[NOTIFICATIONS_UNAUTHORIZED] Invalid token`);
     return res.status(401).json({ success: false, error: 'Unauthorized access' });
   }
 
@@ -1296,15 +1294,15 @@ app.get('/api/admin/notifications', extractToken, async (req, res) => {
       .limit(20);
 
     if (error) {
-      adminErrorLogger.error(`[NOTIFICATIONS_FETCH_FAIL] ${error.message}`);
+      console.error(`[NOTIFICATIONS_FETCH_FAIL] ${error.message}`);
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    adminLogger.info(`[NOTIFICATIONS_FETCH_SUCCESS] Admin UID: ${sessionUser.user.id}, Count: ${data.length}`);
+    console.log(`[NOTIFICATIONS_FETCH_SUCCESS] Admin UID: ${sessionUser.user.id}, Count: ${data.length}`);
     res.json({ success: true, notifications: data || [] });
 
   } catch (err) {
-    adminErrorLogger.error(`[NOTIFICATIONS_EXCEPTION] ${err.message}`);
+    console.error(`[NOTIFICATIONS_EXCEPTION] ${err.message}`);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
@@ -1320,13 +1318,13 @@ app.post('/api/format-date', (req, res) => {
 
   try {
     if (!timestamp) {
-      adminLogger.warn(`[FORMAT_DATE_INVALID] Timestamp missing in request`);
+      console.warn(`[FORMAT_DATE_INVALID] Timestamp missing in request`);
       throw new Error('Timestamp is required');
     }
 
     const date = new Date(`${timestamp}Z`);
     if (isNaN(date.getTime())) {
-      adminLogger.warn(`[FORMAT_DATE_INVALID_FORMAT] Received invalid timestamp: ${timestamp}`);
+      console.warn(`[FORMAT_DATE_INVALID_FORMAT] Received invalid timestamp: ${timestamp}`);
       throw new Error('Invalid timestamp format');
     }
 
@@ -1343,11 +1341,11 @@ app.post('/api/format-date', (req, res) => {
 
     const formatted = new Intl.DateTimeFormat('en-IN', options).format(date);
 
-    adminLogger.info(`[FORMAT_DATE_SUCCESS] Input: ${timestamp}, Output: ${formatted}`);
+    console.log(`[FORMAT_DATE_SUCCESS] Input: ${timestamp}, Output: ${formatted}`);
     res.json({ formatted });
 
   } catch (err) {
-    adminErrorLogger.error(`[FORMAT_DATE_ERROR] ${err.message} | Raw: ${timestamp || 'null'}`);
+    console.error(`[FORMAT_DATE_ERROR] ${err.message} | Raw: ${timestamp || 'null'}`);
     res.status(400).json({ error: 'Invalid timestamp' });
   }
 });

@@ -5,7 +5,6 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const rateLimit = require('express-rate-limit'); // ✅ Add the rate limit module
 const { body, validationResult } = require('express-validator');
-const { userLogger, errorLogger } = require('./logger'); // ✅ Import your loggers
 const app = express();
 const PORT = process.env.PORT || 3000;
 // Enable CORS for frontend access
@@ -132,7 +131,7 @@ app.post('/api/signup', [
 async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    errorLogger.warn('[Signup] Validation errors: ' + JSON.stringify(errors.array()));
+    console.warn('[Signup] Validation errors: ' + JSON.stringify(errors.array()));
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -150,7 +149,7 @@ async (req, res) => {
     });
 
     if (authError) {
-      errorLogger.error(`[Signup] Auth error for ${mobile}: ${authError.message}`);
+      console.error(`[Signup] Auth error for ${mobile}: ${authError.message}`);
       return res.status(400).json({ error: authError.message });
     }
 
@@ -162,7 +161,7 @@ async (req, res) => {
       .insert([{ id: userId, mobile, username, uid, wallet_balance: 0 }]);
 
     if (dbError) {
-      errorLogger.error(`[Signup] DB error for ${userId}: ${dbError.message}`);
+      console.error(`[Signup] DB error for ${userId}: ${dbError.message}`);
       await supabase.auth.admin.deleteUser(userId);
       return res.status(400).json({ error: dbError.message });
     }
@@ -173,21 +172,21 @@ async (req, res) => {
       .insert([{ id: userId, mobile, username, uid }]);
 
     if (profileError) {
-      errorLogger.error(`[Signup] Profile error for ${userId}: ${profileError.message}`);
+      console.error(`[Signup] Profile error for ${userId}: ${profileError.message}`);
       await supabase.auth.admin.deleteUser(userId);
       await supabase.from('users').delete().eq('id', userId);
       return res.status(400).json({ error: profileError.message });
     }
 
     // ✅ 4. Log and return created user summary
-    userLogger.info(`[Signup] New user registered: ${userId} (mobile: ${mobile}, username: ${username})`);
+    console.log(`[Signup] New user registered: ${userId} (mobile: ${mobile}, username: ${username})`);
 
     return res.status(200).json({
       user: { id: userId, mobile, username, uid, wallet_balance: 0 }
     });
 
   } catch (err) {
-    errorLogger.error(`[Signup] Server crash: ${err.message}`);
+    console.error(`[Signup] Server crash: ${err.message}`);
     return res.status(500).json({ error: 'Server error' });
   }
 });
@@ -208,7 +207,7 @@ app.post('/api/login', [
 async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    errorLogger.warn('[Login] Validation failed: ' + JSON.stringify(errors.array()));
+    console.warn('[Login] Validation failed: ' + JSON.stringify(errors.array()));
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -223,7 +222,7 @@ async (req, res) => {
     });
 
     if (authError || !authData.user) {
-      userLogger.warn(`[Login] Failed login attempt for mobile: ${mobile}`);
+      console.warn(`[Login] Failed login attempt for mobile: ${mobile}`);
       return res.status(401).json({ error: 'Invalid mobile number or password' });
     }
 
@@ -237,12 +236,12 @@ async (req, res) => {
       .single();
 
     if (dbError || !userData) {
-      errorLogger.error(`[Login] Profile fetch failed for user ${userId}: ${dbError?.message || 'No data'}`);
+      console.error(`[Login] Profile fetch failed for user ${userId}: ${dbError?.message || 'No data'}`);
       return res.status(404).json({ error: 'User profile not found' });
     }
 
     // 🎉 Step 3: Log success and respond
-    userLogger.info(`[Login] User logged in: ${userId} (mobile: ${mobile})`);
+    console.log(`[Login] User logged in: ${userId} (mobile: ${mobile})`);
 
     return res.status(200).json({
       message: 'Login successful',
@@ -251,7 +250,7 @@ async (req, res) => {
     });
 
   } catch (err) {
-    errorLogger.error(`[Login] Server error: ${err.message}`);
+    console.error(`[Login] Server error: ${err.message}`);
     return res.status(500).json({ error: 'Server error' });
   }
 });
@@ -265,7 +264,7 @@ app.get('/api/wallet', extractToken, async (req, res) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
-      errorLogger.warn(`[Wallet] Invalid or expired token used`);
+      console.warn(`[Wallet] Invalid or expired token used`);
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -279,16 +278,16 @@ app.get('/api/wallet', extractToken, async (req, res) => {
       .single();
 
     if (dbError || !userData) {
-      errorLogger.error(`[Wallet] Balance fetch failed for user ${userId}: ${dbError?.message || 'No user data'}`);
+      console.error(`[Wallet] Balance fetch failed for user ${userId}: ${dbError?.message || 'No user data'}`);
       return res.status(404).json({ error: 'User wallet balance not found' });
     }
 
-    userLogger.info(`[Wallet] Wallet balance retrieved for user ${userId}: ₹${userData.wallet_balance || 0}`);
+    console.log(`[Wallet] Wallet balance retrieved for user ${userId}: ₹${userData.wallet_balance || 0}`);
 
     res.json({ wallet_balance: userData.wallet_balance || 0 });
 
   } catch (err) {
-    errorLogger.error(`[Wallet] Server error: ${err.message}`);
+    console.error(`[Wallet] Server error: ${err.message}`);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -302,7 +301,7 @@ app.get('/api/profile', extractToken, async (req, res) => {
     const { data: { user }, error: tokenError } = await supabase.auth.getUser(token);
 
     if (tokenError || !user) {
-      errorLogger.warn('[Profile] Invalid or expired token used');
+      console.warn('[Profile] Invalid or expired token used');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -316,15 +315,15 @@ app.get('/api/profile', extractToken, async (req, res) => {
       .single();
 
     if (error) {
-      errorLogger.error(`[Profile] Fetch failed for user ${userId}: ${error.message}`);
+      console.error(`[Profile] Fetch failed for user ${userId}: ${error.message}`);
       return res.status(500).json({ error: error.message });
     }
 
-    userLogger.info(`[Profile] Profile fetched for user ${userId}`);
+    console.log(`[Profile] Profile fetched for user ${userId}`);
     res.json(data);
 
   } catch (err) {
-    errorLogger.error(`[Profile] Server error: ${err.message}`);
+    console.error(`[Profile] Server error: ${err.message}`);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -338,7 +337,7 @@ app.get('/api/deposits/pending', extractToken, async (req, res) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
-      errorLogger.warn('[Deposits] Invalid or expired token used on pending check');
+      console.warn('[Deposits] Invalid or expired token used on pending check');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -352,15 +351,15 @@ app.get('/api/deposits/pending', extractToken, async (req, res) => {
       .eq('status', 'pending');
 
     if (error) {
-      errorLogger.error(`[Deposits] Failed to fetch pending deposits for ${userId}: ${error.message}`);
+      console.error(`[Deposits] Failed to fetch pending deposits for ${userId}: ${error.message}`);
       return res.status(500).json({ error: error.message });
     }
 
-    userLogger.info(`[Deposits] Pending deposit status checked for user ${userId} — ${data.length > 0 ? 'Pending exists' : 'No pending deposits'}`);
+    console.log(`[Deposits] Pending deposit status checked for user ${userId} — ${data.length > 0 ? 'Pending exists' : 'No pending deposits'}`);
     res.json({ pending: data.length > 0 });
 
   } catch (err) {
-    errorLogger.error(`[Deposits] Server error during pending check: ${err.message}`);
+    console.error(`[Deposits] Server error during pending check: ${err.message}`);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -380,7 +379,7 @@ async (req, res) => {
   // ⛔ Check for validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    errorLogger.warn('[Deposit] Validation failed: ' + JSON.stringify(errors.array()));
+    console.warn('[Deposit] Validation failed: ' + JSON.stringify(errors.array()));
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -390,7 +389,7 @@ async (req, res) => {
     // 🔐 Verify token and extract user
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
-      errorLogger.warn('[Deposit] Invalid or expired token used');
+      console.warn('[Deposit] Invalid or expired token used');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -404,12 +403,12 @@ async (req, res) => {
       .eq('status', 'pending');
 
     if (pendingError) {
-      errorLogger.error(`[Deposit] Pending check failed for ${userId}: ${pendingError.message}`);
+      console.error(`[Deposit] Pending check failed for ${userId}: ${pendingError.message}`);
       return res.status(500).json({ error: pendingError.message });
     }
 
     if (pending.length > 0) {
-      userLogger.warn(`[Deposit] Duplicate attempt — user ${userId} already has a pending deposit`);
+      console.warn(`[Deposit] Duplicate attempt — user ${userId} already has a pending deposit`);
       return res.status(400).json({ error: 'You already have a pending deposit request' });
     }
 
@@ -422,7 +421,7 @@ async (req, res) => {
     }]);
 
     if (depositErr) {
-      errorLogger.error(`[Deposit] Insert failed for ${userId}: ${depositErr.message}`);
+      console.error(`[Deposit] Insert failed for ${userId}: ${depositErr.message}`);
       return res.status(500).json({ error: depositErr.message });
     }
 
@@ -436,15 +435,15 @@ async (req, res) => {
       }]);
 
     if (notificationErr) {
-      errorLogger.warn(`[Deposit] Notification insert failed for ${userId}: ${notificationErr.message}`);
+      console.warn(`[Deposit] Notification insert failed for ${userId}: ${notificationErr.message}`);
       // Proceed anyway
     }
 
-    userLogger.info(`[Deposit] New deposit submitted by user ${userId}: ₹${amount}`);
+    console.log(`[Deposit] New deposit submitted by user ${userId}: ₹${amount}`);
     res.json({ message: 'Deposit request created successfully' });
 
   } catch (err) {
-    errorLogger.error(`[Deposit] Server crash for user ${req.body?.userId || 'unknown'}: ${err.message}`);
+    console.error(`[Deposit] Server crash for user ${req.body?.userId || 'unknown'}: ${err.message}`);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -458,7 +457,7 @@ app.get('/api/withdrawals/pending', extractToken, async (req, res) => {
     const { data: { user }, error: tokenError } = await supabase.auth.getUser(token);
 
     if (tokenError || !user) {
-      errorLogger.warn('[Withdrawals] Invalid or expired token used on pending check');
+      console.warn('[Withdrawals] Invalid or expired token used on pending check');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -472,16 +471,16 @@ app.get('/api/withdrawals/pending', extractToken, async (req, res) => {
       .eq('status', 'pending');
 
     if (error) {
-      errorLogger.error(`[Withdrawals] Pending fetch failed for ${userId}: ${error.message}`);
+      console.error(`[Withdrawals] Pending fetch failed for ${userId}: ${error.message}`);
       return res.status(500).json({ error: error.message });
     }
 
     const hasPending = data.length > 0;
-    userLogger.info(`[Withdrawals] Pending withdrawal check for ${userId}: ${hasPending ? 'YES' : 'NO'}`);
+    console.log(`[Withdrawals] Pending withdrawal check for ${userId}: ${hasPending ? 'YES' : 'NO'}`);
     res.json({ pending: hasPending });
 
   } catch (err) {
-    errorLogger.error(`[Withdrawals] Server crash during pending check: ${err.message}`);
+    console.error(`[Withdrawals] Server crash during pending check: ${err.message}`);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -505,7 +504,7 @@ async (req, res) => {
   // ⛔ Check for validation errors
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    errorLogger.warn('[Withdrawals] Validation failed: ' + JSON.stringify(errors.array()));
+    console.warn('[Withdrawals] Validation failed: ' + JSON.stringify(errors.array()));
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -515,7 +514,7 @@ async (req, res) => {
     // 🔐 Verify token and extract user ID
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
-      errorLogger.warn('[Withdrawals] Invalid or expired token used');
+      console.warn('[Withdrawals] Invalid or expired token used');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -529,12 +528,12 @@ async (req, res) => {
       .eq('status', 'pending');
 
     if (pendingError) {
-      errorLogger.error(`[Withdrawals] Pending check failed for ${userId}: ${pendingError.message}`);
+      console.error(`[Withdrawals] Pending check failed for ${userId}: ${pendingError.message}`);
       return res.status(500).json({ error: pendingError.message });
     }
 
     if (pending.length > 0) {
-      userLogger.warn(`[Withdrawals] Duplicate request — user ${userId} already has a pending withdrawal`);
+      console.warn(`[Withdrawals] Duplicate request — user ${userId} already has a pending withdrawal`);
       return res.status(400).json({ error: 'You already have a pending withdrawal request' });
     }
 
@@ -550,7 +549,7 @@ async (req, res) => {
       }]);
 
     if (withdrawalErr) {
-      errorLogger.error(`[Withdrawals] Insert failed for ${userId}: ${withdrawalErr.message}`);
+      console.error(`[Withdrawals] Insert failed for ${userId}: ${withdrawalErr.message}`);
       return res.status(500).json({ error: withdrawalErr.message });
     }
 
@@ -564,14 +563,14 @@ async (req, res) => {
       }]);
 
     if (notificationErr) {
-      errorLogger.warn(`[Withdrawals] Notification failed for ${userId}: ${notificationErr.message}`);
+      console.warn(`[Withdrawals] Notification failed for ${userId}: ${notificationErr.message}`);
     }
 
-    userLogger.info(`[Withdrawals] Withdrawal submitted by ${userId}: ₹${amount}`);
+    console.log(`[Withdrawals] Withdrawal submitted by ${userId}: ₹${amount}`);
     res.json({ message: 'Withdrawal request created successfully' });
 
   } catch (err) {
-    errorLogger.error(`[Withdrawals] Server crash for user ${req.body?.userId || 'unknown'}: ${err.message}`);
+    console.error(`[Withdrawals] Server crash for user ${req.body?.userId || 'unknown'}: ${err.message}`);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -584,7 +583,7 @@ app.get('/api/tournaments/pending', extractToken, async (req, res) => {
     // 🔐 Get user from token
     const { data: { user }, error: tokenError } = await supabase.auth.getUser(token);
     if (tokenError || !user) {
-      errorLogger.warn('[Tournaments] Invalid or expired token used for pending check');
+      console.warn('[Tournaments] Invalid or expired token used for pending check');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -598,16 +597,16 @@ app.get('/api/tournaments/pending', extractToken, async (req, res) => {
       .eq('status', 'pending');
 
     if (error) {
-      errorLogger.error(`[Tournaments] Supabase query failed for user ${userId}: ${error.message}`);
+      console.error(`[Tournaments] Supabase query failed for user ${userId}: ${error.message}`);
       return res.status(500).json({ error: error.message });
     }
 
     const hasPending = data.length > 0;
-    userLogger.info(`[Tournaments] Pending status checked for user ${userId}: ${hasPending ? 'PENDING' : 'NONE'}`);
+    console.log(`[Tournaments] Pending status checked for user ${userId}: ${hasPending ? 'PENDING' : 'NONE'}`);
     res.json({ pending: hasPending });
 
   } catch (err) {
-    errorLogger.error(`[Tournaments] Server crash during pending check: ${err.message}`);
+    console.error(`[Tournaments] Server crash during pending check: ${err.message}`);
     res.status(500).json({ error: 'Unexpected server error' });
   }
 });
@@ -631,7 +630,7 @@ async (req, res) => {
 
   // 🧼 Check for validation issues
   if (!errors.isEmpty()) {
-    errorLogger.warn('[Tournaments] Validation failed: ' + JSON.stringify(errors.array()));
+    console.warn('[Tournaments] Validation failed: ' + JSON.stringify(errors.array()));
     return res.status(422).json({ errors: errors.array() });
   }
 
@@ -641,7 +640,7 @@ async (req, res) => {
     // 🔐 Authenticate user
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
-      errorLogger.warn('[Tournaments] Invalid or expired token');
+      console.warn('[Tournaments] Invalid or expired token');
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
@@ -655,12 +654,12 @@ async (req, res) => {
       .single();
 
     if (fetchErr || !userData) {
-      errorLogger.error(`[Tournaments] Wallet fetch failed for ${userId}: ${fetchErr?.message}`);
+      console.error(`[Tournaments] Wallet fetch failed for ${userId}: ${fetchErr?.message}`);
       return res.status(404).json({ error: 'User not found or wallet access failed' });
     }
 
     if (userData.wallet_balance < entry_fee) {
-      userLogger.warn(`[Tournaments] Insufficient balance for ${userId}. Entry: ₹${entry_fee}, Wallet: ₹${userData.wallet_balance}`);
+      console.warn(`[Tournaments] Insufficient balance for ${userId}. Entry: ₹${entry_fee}, Wallet: ₹${userData.wallet_balance}`);
       return res.status(400).json({ error: 'Insufficient wallet balance' });
     }
 
@@ -735,7 +734,7 @@ async (req, res) => {
         date: new Date().toISOString()
       }]);
 
-    userLogger.info(`[Tournaments] ${matchStatus.toUpperCase()} — ${userId} joined ₹${entry_fee} match`);
+    console.log(`[Tournaments] ${matchStatus.toUpperCase()} — ${userId} joined ₹${entry_fee} match`);
 
     res.json({
       message: matchStatus === 'matched'
@@ -744,7 +743,7 @@ async (req, res) => {
     });
 
   } catch (err) {
-    errorLogger.error(`[Tournaments] Join crash for ${req.body?.userId || 'unknown'}: ${err.message}`);
+    console.error(`[Tournaments] Join crash for ${req.body?.userId || 'unknown'}: ${err.message}`);
     res.status(500).json({ error: 'Tournament registration failed' });
   }
 });
@@ -758,7 +757,7 @@ app.get('/api/notifications', extractToken, async (req, res) => {
     const { data: { user }, error: tokenError } = await supabase.auth.getUser(token);
 
     if (tokenError || !user) {
-      errorLogger.warn('[Notifications] Invalid or expired token used');
+      console.warn('[Notifications] Invalid or expired token used');
       return res.status(401).json({ success: false, error: 'Invalid or expired token' });
     }
 
@@ -773,18 +772,18 @@ app.get('/api/notifications', extractToken, async (req, res) => {
       .limit(20);
 
     if (error) {
-      errorLogger.error(`[Notifications] Supabase query failed for ${userId}: ${error.message}`);
+      console.error(`[Notifications] Supabase query failed for ${userId}: ${error.message}`);
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    userLogger.info(`[Notifications] Fetched ${data?.length || 0} notifications for ${userId}`);
+    console.log(`[Notifications] Fetched ${data?.length || 0} notifications for ${userId}`);
     res.json({
       success: true,
       notifications: data || []
     });
 
   } catch (err) {
-    errorLogger.error(`[Notifications] Unexpected error for token ${token?.slice(0, 10) || 'n/a'}: ${err.message}`);
+    console.error(`[Notifications] Unexpected error for token ${token?.slice(0, 10) || 'n/a'}: ${err.message}`);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
@@ -796,7 +795,7 @@ app.get('/api/notifications/unread-count', extractToken, async (req, res) => {
     // 🔐 Authenticate and extract user
     const { data: { user }, error: tokenError } = await supabase.auth.getUser(token);
     if (tokenError || !user) {
-      errorLogger.warn('[Notifications] Invalid or expired token used for unread count');
+      console.warn('[Notifications] Invalid or expired token used for unread count');
       return res.status(401).json({ success: false, error: 'Invalid or expired token' });
     }
 
@@ -810,15 +809,15 @@ app.get('/api/notifications/unread-count', extractToken, async (req, res) => {
       .eq('is_read', false);
 
     if (error) {
-      errorLogger.error(`[Notifications] Unread count query failed for ${userId}: ${error.message}`);
+      console.error(`[Notifications] Unread count query failed for ${userId}: ${error.message}`);
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    userLogger.info(`[Notifications] Unread count checked for ${userId}: ${count || 0} unread`);
+    console.log(`[Notifications] Unread count checked for ${userId}: ${count || 0} unread`);
     res.json({ success: true, count: count || 0 });
 
   } catch (err) {
-    errorLogger.error(`[Notifications] Crash during unread count for token ${token?.slice(0, 10) || 'n/a'}: ${err.message}`);
+    console.error(`[Notifications] Crash during unread count for token ${token?.slice(0, 10) || 'n/a'}: ${err.message}`);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
@@ -830,7 +829,7 @@ app.post('/api/notifications/mark-all-read', extractToken, async (req, res) => {
     // 🔐 Authenticate and extract user
     const { data: { user }, error: tokenError } = await supabase.auth.getUser(token);
     if (tokenError || !user) {
-      errorLogger.warn('[Notifications] Invalid or expired token used during mark-all-read');
+      console.warn('[Notifications] Invalid or expired token used during mark-all-read');
       return res.status(401).json({ success: false, error: 'Invalid or expired token' });
     }
 
@@ -844,15 +843,15 @@ app.post('/api/notifications/mark-all-read', extractToken, async (req, res) => {
       .eq('is_read', false);
 
     if (error) {
-      errorLogger.error(`[Notifications] Failed to mark notifications read for ${userId}: ${error.message}`);
+      console.error(`[Notifications] Failed to mark notifications read for ${userId}: ${error.message}`);
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    userLogger.info(`[Notifications] All notifications marked as read for ${userId}`);
+    console.log(`[Notifications] All notifications marked as read for ${userId}`);
     res.json({ success: true, message: 'All notifications marked as read' });
 
   } catch (err) {
-    errorLogger.error(`[Notifications] Server error during mark-all-read for token ${token?.slice(0, 10)}: ${err.message}`);
+    console.error(`[Notifications] Server error during mark-all-read for token ${token?.slice(0, 10)}: ${err.message}`);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
@@ -866,7 +865,7 @@ app.post('/api/format-date', (req, res) => {
 
   try {
     if (!timestamp) {
-      errorLogger.warn('[FormatDate] Missing timestamp in request body');
+      console.warn('[FormatDate] Missing timestamp in request body');
       throw new Error('Timestamp is required');
     }
 
@@ -884,11 +883,11 @@ app.post('/api/format-date', (req, res) => {
     const date = new Date(`${timestamp}Z`);
     const formatted = new Intl.DateTimeFormat('en-IN', options).format(date);
 
-    userLogger.info(`[FormatDate] Timestamp ${timestamp} formatted as "${formatted}"`);
+    console.log(`[FormatDate] Timestamp ${timestamp} formatted as "${formatted}"`);
     res.json({ formatted });
 
   } catch (err) {
-    errorLogger.error(`[FormatDate] Failed to format timestamp "${timestamp}": ${err.message}`);
+    console.error(`[FormatDate] Failed to format timestamp "${timestamp}": ${err.message}`);
     res.status(400).json({ error: 'Invalid timestamp' });
   }
 });
