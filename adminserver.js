@@ -9,8 +9,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // Enable CORS for frontend access
 app.use(cors({
-  origin: 'https://magnificent-brigadeiros-ab48cb.netlify.app/', // 🔁 during development
-  credentials: true               // if you're using cookies or sessions
+  origin: 'https://magnificent-brigadeiros-ab48cb.netlify.app',
+  credentials: true
 }));
 
 // Middleware to parse JSON bodies
