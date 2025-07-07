@@ -1,0 +1,29 @@
+name: Auto Suspend/Resume Admin + Main Backend
+
+on:
+  schedule:
+    - cron: '30 17 * * *'  # 11:00 PM IST → Suspend (UTC)
+    - cron: '30 3 * * *'   # 9:00 AM IST → Resume (UTC)
+
+jobs:
+  control-render-services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Action
+        id: decide
+        run: |
+          if [ "${{ github.event.schedule }}" = "30 17 * * *" ]; then
+            echo "action=suspend" >> $GITHUB_OUTPUT
+          else
+            echo "action=resume" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Call Render API for adminserver
+        run: |
+          curl -X POST "https://api.render.com/v1/services/srv-d1l68k6mcj7s73br77lg/${{ steps.decide.outputs.action }}" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+
+      - name: Call Render API for main server
+        run: |
+          curl -X POST "https://api.render.com/v1/services/srv-d1l64c6mcj7s73br2u3g/${{ steps.decide.outputs.action }}" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
