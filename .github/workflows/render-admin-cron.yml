@@ -2,7 +2,7 @@ name: Auto Suspend/Resume Admin + Main Backend
 
 on:
   schedule:
-    - cron: '30 17 * * *'  # 11:00 PM IST → Suspend (UTC)
+    - cron: '30 18 * * *'  # 11:00 PM IST → Suspend (UTC)
     - cron: '30 3 * * *'   # 9:00 AM IST → Resume (UTC)
 
 jobs:
