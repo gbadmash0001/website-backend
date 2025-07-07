@@ -36,7 +36,7 @@ async function checkUnreadNotifications() {
   if (!token) return;
 
   try {
-    const res = await fetch('/api/notifications/unread-count', {
+    const res = await fetch('https://website-backend-server.onrender.com/api/notifications/unread-count', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`
