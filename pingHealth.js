@@ -4,8 +4,8 @@ const path = require('path');
 // const { sendAlertEmail } = require('./deploy-prep/emailer'); // 📩 Enable for email alerts
 
 const LOG_PATH = path.join(__dirname, 'monitor.log');
-const MAIN_HEALTH_URL = 'http://localhost:3000/api/health';
-const ADMIN_HEALTH_URL = 'http://localhost:3001/api/health';
+const MAIN_HEALTH_URL = 'https://website-backend-server.onrender.com/api/health';
+const ADMIN_HEALTH_URL = 'https://website-backend-adminserver.onrender.com/api/health';
 
 // ✅ Format timestamp locally in Asia/Kolkata timezone
 const formatTimestamp = () =>
