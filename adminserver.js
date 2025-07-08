@@ -918,7 +918,7 @@ app.post('/api/admin/tournaments/winner', [
   try {
     const { data: matchData, error: matchError } = await supabase
       .from('tournament_registrations')
-      .select('player1_id, player2_id, entry_fee, reward')
+      .select('player1_id, player2_id, entry_fee, reward, match_type')
       .eq('id', matchId)
       .single();
 
@@ -927,31 +927,37 @@ app.post('/api/admin/tournaments/winner', [
       throw new Error("Match not found");
     }
 
-    const { player1_id, player2_id, entry_fee, reward } = matchData;
+    const { player1_id, player2_id, entry_fee, reward, match_type } = matchData;
     const winnerId = winnerChoice === 1 ? player1_id : player2_id;
     const loserId = winnerChoice === 1 ? player2_id : player1_id;
     const leftoverAmount = (entry_fee * 2) - reward;
 
-    const { data: winner, error: winnerFetchErr } = await supabase
+    const { data: winnerUser, error: winnerFetchErr } = await supabase
       .from('users')
-      .select('wallet_balance')
+      .select('wallet_balance, username')
       .eq('id', winnerId)
       .single();
 
-    if (winnerFetchErr || !winner) {
-      console.error(`[WINNER_FETCH_FAIL] UID: ${winnerId} — ${winnerFetchErr?.message}`);
-      throw new Error("Winner not found");
+    const { data: loserUser, error: loserFetchErr } = await supabase
+      .from('users')
+      .select('username')
+      .eq('id', loserId)
+      .single();
+
+    if (winnerFetchErr || !winnerUser || loserFetchErr || !loserUser) {
+      console.error(`[USER_FETCH_FAIL] Winner or loser not found`);
+      throw new Error("Could not fetch player details");
     }
 
-    const newWinnerBalance = winner.wallet_balance + reward;
+    const newWinnerBalance = winnerUser.wallet_balance + reward;
     const { error: winnerUpdateErr } = await supabase
       .from('users')
       .update({ wallet_balance: newWinnerBalance })
       .eq('id', winnerId);
 
     if (winnerUpdateErr) {
-      console.error(`[WINNER_WALLET_UPDATE_FAIL] UID: ${winnerId} — ${winnerUpdateErr.message}`);
-      throw new Error("Failed to update winner’s wallet");
+      console.error(`[WINNER_WALLET_UPDATE_FAIL] ${winnerUpdateErr.message}`);
+      throw new Error("Failed to update winner's wallet");
     }
 
     const { data: adminData, error: adminFetchErr } = await supabase
@@ -961,8 +967,7 @@ app.post('/api/admin/tournaments/winner', [
       .single();
 
     if (adminFetchErr || !adminData) {
-      console.error(`[ADMIN_PROFITS_FETCH_FAIL] ${adminFetchErr?.message}`);
-      throw new Error("Admin wallet not found");
+      throw new Error("Admin wallet fetch failed");
     }
 
     const updatedProfits = adminData.profits + leftoverAmount;
@@ -976,42 +981,44 @@ app.post('/api/admin/tournaments/winner', [
       throw new Error("Failed to update admin profits");
     }
 
-    const { error: matchDeleteErr } = await supabase
+    await supabase
       .from('tournament_registrations')
       .delete()
       .eq('id', matchId);
 
-    if (matchDeleteErr) {
-      console.error(`[MATCH_DELETE_FAIL] ID: ${matchId} — ${matchDeleteErr.message}`);
-      throw new Error("Failed to delete match");
-    }
-
     const now = new Date().toISOString();
+
+    const notificationBatch = [
+      {
+        user_id: winnerId,
+        message: `Congrats, You won a ₹${reward} tournament match! Your wallet has been credited.`,
+        date: now
+      },
+      {
+        user_id: loserId,
+        message: `You lost your ₹${entry_fee} tournament match. Better luck next time!`,
+        date: now
+      },
+      {
+        message: `🔥 ${winnerUser.username} won a ₹${reward} ${match_type}v${match_type} match against ${loserUser.username}. GG!`,
+        date: now
+      }
+    ];
+
     const { error: notifyErr } = await supabase
       .from('notifications')
-      .insert([
-        {
-          user_id: winnerId,
-          message: `Congrats, You won a ₹${reward} tournament match! Your wallet has been credited.`,
-          date: now
-        },
-        {
-          user_id: loserId,
-          message: `You lost your ₹${entry_fee} tournament match. Better luck next time!`,
-          date: now
-        }
-      ]);
+      .insert(notificationBatch);
 
     if (notifyErr) {
-      console.error(`[NOTIFY_WINNER_FAIL] UID: ${winnerId}, ${notifyErr.message}`);
+      console.error(`[NOTIFY_BATCH_FAIL] ${notifyErr.message}`);
     }
 
-    console.log(`[TOURNAMENT_WINNER_DECLARED] Match ID: ${matchId}, Winner: ${winnerId}, Loser: ${loserId}, Reward: ₹${reward}, Profit: ₹${leftoverAmount}`);
-    res.json({ message: "Winner declared, reward credited, and profits updated successfully" });
+    console.log(`[TOURNAMENT_WINNER_DECLARED] Match ID: ${matchId}, Winner: ${winnerId}, Reward: ₹${reward}`);
+    res.json({ message: "Winner declared and notifications dispatched successfully." });
 
   } catch (err) {
     console.error(`[WINNER_DECISION_EXCEPTION] ${err.message}`);
-    res.status(500).json({ error: err.message || "Failed to process winner declaration" });
+    res.status(500).json({ error: err.message });
   }
 });
 
