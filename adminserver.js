@@ -1025,7 +1025,7 @@ app.post('/api/admin/tournaments/cancel', [
 
   body('player1_id')
     .notEmpty().withMessage('Player1 ID is required')
-    .isInt({ gt: 0 }).withMessage('Player1 ID must be a positive integer')
+    .isUUID().withMessage('Player1 ID must be a valid UUID')
 ], async (req, res) => {
   const { data: sessionUser, error: authError } = await supabase.auth.getUser(req.accessToken);
 

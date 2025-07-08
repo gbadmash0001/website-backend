@@ -198,9 +198,14 @@
         const registrationId = player.id;
         const player1_id = player.user_id;
 
-        if (!Number.isInteger(registrationId) || registrationId <= 0 ||
-            !Number.isInteger(player1_id) || player1_id <= 0) {
-          alert('Invalid data for cancellation.');
+        if (!Number.isInteger(registrationId) || registrationId <= 0) {
+          alert('Invalid registration ID.');
+          return;
+        }
+
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(player1_id)) {
+          alert('Invalid player ID.');
           return;
         }
 
