@@ -6,25 +6,44 @@
   <title>Join Tournament</title>
   <style>
     body {
-      background-color: #111;
-      color: #fff;
+      margin: 0;
       font-family: Arial, sans-serif;
+      background-image: url('background.jpeg'); /* Update with the correct filename */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      color: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      margin: 0;
+      position: relative;
+      z-index: 1;
     }
+  
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: brightness(1.15);
+      z-index: -1;
+    }
+  
     .container {
-      background-color: #1e1e1e;
+      background-color: rgba(30, 30, 30, 0.9);
       padding: 30px;
       border-radius: 10px;
       width: 90%;
       max-width: 400px;
       text-align: center;
       border: 1px solid #00c85366;
-      box-shadow: 0 0 15px rgba(0, 200, 83, 0.2);
+      box-shadow: 0 0 18px rgba(0, 200, 83, 0.3);
     }
+  
     select, button {
       width: 100%;
       padding: 10px;
@@ -34,17 +53,33 @@
       background-color: #2a2a2a;
       color: white;
     }
+  
     button {
       background-color: #00c853;
       cursor: pointer;
     }
+  
     button:hover {
       opacity: 0.9;
     }
+  
     .back-btn {
       background-color: transparent;
       border: 1px solid #00c853;
       margin-top: 10px;
+    }
+    .rules-link {
+      display: block;
+      text-align: middle;
+      font-size: 14px;
+      margin-bottom: 10px;
+      color: #00e676;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    
+    .rules-link:hover {
+      color: #00c853;
     }
   </style>
 </head>
@@ -52,7 +87,7 @@
 
 <div class="container">
   <h2>Join Tournament</h2>
-
+  <a href="rules.html" class="rules-link">Tournament Rules</a>
   <label for="matchType">Select Match Type:</label>
   <select id="matchType" onchange="updateEntryFees()">
     <option value="1">1v1</option>
@@ -104,7 +139,6 @@
       user.wallet_balance = data.wallet_balance;
       localStorage.setItem('user', JSON.stringify(user));
       document.getElementById('wallet_balance').textContent = `₹${data.wallet_balance}`;
-
     } catch (err) {
       console.error('[wallet] Error:', err.message);
       document.getElementById('wallet_balance').textContent = '₹--';
@@ -130,6 +164,27 @@
   function updateReward() {
     const entryFee = parseInt(document.getElementById("entryFee").value || 0);
     document.getElementById("reward").textContent = (entryFee * 1.8).toFixed(0);
+  }
+
+  function isJoinTimeAllowed() {
+    const now = new Date();
+    const hour = now.getHours();
+    return hour >= 16 && hour < 23; // Between 4 PM and before 11 PM
+  }
+
+  function toggleJoinButton() {
+    const confirmBtn = document.querySelector("button[onclick='confirmJoin()']");
+    if (!isJoinTimeAllowed()) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "Join Disabled (4 PM – 11 PM)";
+      confirmBtn.style.backgroundColor = "#555";
+      confirmBtn.style.cursor = "not-allowed";
+    } else {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Confirm";
+      confirmBtn.style.backgroundColor = "#00c853";
+      confirmBtn.style.cursor = "pointer";
+    }
   }
 
   async function confirmJoin() {
@@ -159,7 +214,6 @@
       if (handleUnauthorized(pendingRes.status)) return;
 
       const pendingData = await pendingRes.json();
-
       if (pendingData.pending) {
         alert('You already have a pending tournament.');
         return;
@@ -177,7 +231,6 @@
       if (handleUnauthorized(joinRes.status)) return;
 
       const joinData = await joinRes.json();
-
       if (!joinRes.ok) {
         const errMsg = joinData.errors
           ? joinData.errors.map(e => e.msg).join('\n')
@@ -198,6 +251,8 @@
 
   fetchWalletBalance();
   updateEntryFees();
+  toggleJoinButton(); // Enforce time-based access
+  setInterval(toggleJoinButton, 60000); // Auto-refresh every minute
 </script>
 
 </body>

@@ -13,10 +13,36 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     checkUnreadNotifications();
+    lockJoinCardOutsideTime(); // visual locking
+  }
+
+  const contactBtn = document.querySelector('#contact-us');
+  if (contactBtn) {
+    contactBtn.addEventListener('click', function (event) {
+      event.preventDefault();
+      alert("In case of any issue/ query/ complaint/ or suggestions, please contact 9815939797 (whatsapp or text message only)");
+    });
   }
 });
 
+function isJoinTimeAllowed() {
+  const now = new Date();
+  const hour = now.getHours();
+  return hour >= 16 && hour < 23; // 4 PM to before 11 PM
+}
+
+function lockJoinCardOutsideTime() {
+  const joinCard = document.getElementById("join-card");
+  if (!isJoinTimeAllowed() && joinCard) {
+    joinCard.classList.add("locked");
+  }
+}
+
 function goTo(page) {
+  if (page === 'join-tournament' && !isJoinTimeAllowed()) {
+    alert("⏳ Joining is only available between 4 PM and 11 PM.");
+    return;
+  }
   window.location.href = page + '.html';
 }
 

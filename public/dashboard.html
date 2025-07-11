@@ -8,10 +8,23 @@
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background-color: #111;
+      background-image: url('dashboard.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
       color: #fff;
     }
-
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: -1;
+    }
     header {
       background-color: #00c853;
       padding: 15px 20px;
@@ -57,6 +70,35 @@
       margin-right: 15px;
       cursor: pointer;
     }
+
+    .footer-buttons {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .btn-footer {
+      background-color: #333;
+      color: #fff;
+      padding: 10px 18px;
+      font-size: 14px;
+      border-radius: 5px;
+      text-decoration: none;
+      transition: 0.3s ease;
+    }
+
+    .btn-footer:hover {
+      background-color: #444;
+      opacity: 0.9;
+    }
+
+    .locked {
+      opacity: 0.5;
+      cursor: not-allowed !important;
+    }
   </style>
 </head>
 <body>
@@ -68,10 +110,15 @@
     <div class="card" onclick="goTo('profile')"><h3>Profile</h3></div>
     <div class="card" onclick="goTo('add-money')"><h3>Add Money</h3></div>
     <div class="card" onclick="goTo('withdraw')"><h3>Withdraw</h3></div>
-    <div class="card" onclick="goTo('join-tournament')"><h3>Join Tournament</h3></div>
+    <div class="card" id="join-card" onclick="goTo('join-tournament')"><h3>Join Tournament</h3></div>
     <div class="card" id="notifications-card" onclick="goTo('notifications')" style="position: relative;">
       <h3>Notifications</h3>
     </div>
+  </div>
+
+  <div class="footer-buttons">
+    <a href="#" class="btn btn-footer" id="contact-us">Contact Us</a>
+    <a href="terms.html" class="btn btn-footer">Terms & Conditions</a>
   </div>
 
   <script src="dashboard.js"></script>

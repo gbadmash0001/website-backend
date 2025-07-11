@@ -7,22 +7,40 @@
   <style>
     body {
       margin: 0;
-      background-color: #111;
-      color: #fff;
       font-family: Arial, sans-serif;
+      background-image: url('background.jpeg'); /* Replace with your actual file name */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      color: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.35); /* Adjust for glow/readability balance */
+      backdrop-filter: brightness(1.15); /* Adds extra glow */
+      z-index: -1;
     }
 
     .container {
-      background-color: #1e1e1e;
+      background-color: rgba(30, 30, 30, 0.9); /* Slight transparency for subtle blending */
       padding: 30px;
       border-radius: 10px;
       width: 350px;
       text-align: center;
-      box-shadow: 0 0 15px rgba(0, 200, 83, 0.2);
+      box-shadow: 0 0 20px rgba(0, 200, 83, 0.4);
       border: 1px solid #00c85366;
     }
 
@@ -55,23 +73,23 @@
     .btn:hover {
       opacity: 0.9;
     }
-
+  
     #qr-section {
       display: none;
       margin-top: 20px;
     }
-
+  
     .note {
       color: #bbb;
       font-size: 14px;
       margin-bottom: 10px;
     }
-
+  
     .back-btn {
       background-color: transparent;
       border: 1px solid #00c853;
     }
-
+  
     img {
       width: 100%;
       border-radius: 8px;

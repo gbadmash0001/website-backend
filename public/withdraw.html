@@ -7,30 +7,48 @@
   <style>
     body {
       margin: 0;
-      background-color: #111;
-      color: #fff;
       font-family: Arial, sans-serif;
+      background-image: url('background.jpeg'); /* Replace with your actual image filename */
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      color: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
+      position: relative;
+      z-index: 1;
     }
-
+  
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3); /* You can fine-tune this opacity as needed */
+      backdrop-filter: brightness(1.2); /* Boosts glow subtly */
+      z-index: -1;
+    }
+  
     .container {
-      background-color: #1e1e1e;
+      background-color: rgba(30, 30, 30, 0.9);
       padding: 30px;
       border-radius: 10px;
       width: 350px;
       text-align: center;
-      box-shadow: 0 0 15px rgba(0, 200, 83, 0.2);
+      box-shadow: 0 0 18px rgba(0, 200, 83, 0.35);
       border: 1px solid #00c85366;
     }
-
+  
     h2 {
       color: #00e676;
       margin-bottom: 20px;
     }
-
+  
     input {
       width: 100%;
       padding: 10px;
@@ -40,7 +58,7 @@
       background-color: #2a2a2a;
       color: white;
     }
-
+  
     .btn {
       background-color: #00c853;
       padding: 10px;
@@ -51,17 +69,17 @@
       width: 100%;
       margin-bottom: 10px;
     }
-
+  
     .btn:hover {
       opacity: 0.9;
     }
-
+  
     .note {
       color: #bbb;
       font-size: 14px;
       margin-bottom: 10px;
     }
-
+  
     .back-btn {
       background-color: transparent;
       border: 1px solid #00c853;

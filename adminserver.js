@@ -337,6 +337,7 @@ app.get('/api/admin/transactions', extractToken, async (req, res) => {
       .from('admin_transactions')
       .select('id, amount, type, date, description')
       .order('date', { ascending: false });
+      .limit(20);
 
     if (error) {
       console.error(`[TXN_DB_ERROR] ${error.message}`);
