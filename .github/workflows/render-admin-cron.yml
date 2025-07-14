@@ -12,7 +12,9 @@ jobs:
       - name: Determine Action
         id: decide
         run: |
-          if [ "${{ github.event.schedule }}" = "30 17 * * *" ]; then
+          # Use GitHub's date command to get UTC hour
+          current_hour=$(date -u +"%H")
+          if [ "$current_hour" = "18" ]; then
             echo "action=suspend" >> $GITHUB_OUTPUT
           else
             echo "action=resume" >> $GITHUB_OUTPUT
