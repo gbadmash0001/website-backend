@@ -2,30 +2,34 @@ name: Auto Suspend/Resume Admin + Main Backend
 
 on:
   schedule:
-    - cron: '30 18 * * *'  # 12:00 AM IST → Suspend (UTC)
-    - cron: '30 3 * * *'   # 9:00 AM IST → Resume (UTC)
+    - cron: '30 18 * * *'  # 12:00 AM IST → Suspend servers
+    - cron: '30 3 * * *'   # 9:00 AM IST → Resume servers
 
 jobs:
-  control-render-services:
+  suspend-services:
+    if: github.event.schedule == '30 18 * * *'
     runs-on: ubuntu-latest
     steps:
-      - name: Determine Action
-        id: decide
+      - name: Suspend admin server
         run: |
-          # Use GitHub's date command to get UTC hour
-          current_hour=$(date -u +"%H")
-          if [ "$current_hour" = "18" ]; then
-            echo "action=suspend" >> $GITHUB_OUTPUT
-          else
-            echo "action=resume" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Call Render API for adminserver
-        run: |
-          curl -X POST "https://api.render.com/v1/services/srv-d1l68k6mcj7s73br77lg/${{ steps.decide.outputs.action }}" \
+          curl -X POST "https://api.render.com/v1/services/srv-d1l68k6mcj7s73br77lg/suspend" \
             -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
 
-      - name: Call Render API for main server
+      - name: Suspend main server
         run: |
-          curl -X POST "https://api.render.com/v1/services/srv-d1l64c6mcj7s73br2u3g/${{ steps.decide.outputs.action }}" \
+          curl -X POST "https://api.render.com/v1/services/srv-d1l64c6mcj7s73br2u3g/suspend" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+
+  resume-services:
+    if: github.event.schedule == '30 3 * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resume admin server
+        run: |
+          curl -X POST "https://api.render.com/v1/services/srv-d1l68k6mcj7s73br77lg/resume" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+
+      - name: Resume main server
+        run: |
+          curl -X POST "https://api.render.com/v1/services/srv-d1l64c6mcj7s73br2u3g/resume" \
             -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
