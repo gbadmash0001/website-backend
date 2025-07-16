@@ -2,34 +2,33 @@ name: Auto Suspend/Resume Admin + Main Backend
 
 on:
   schedule:
-    - cron: '30 18 * * *'  # 12:00 AM IST → Suspend servers
-    - cron: '30 3 * * *'   # 9:00 AM IST → Resume servers
+    - cron: '30 18 * * *'  # Triggers at 12:00 AM IST
+    - cron: '30 3 * * *'   # Triggers at 9:00 AM IST
 
 jobs:
-  suspend-services:
-    if: github.event.schedule == '30 18 * * *'
+  manage-services:
     runs-on: ubuntu-latest
     steps:
-      - name: Suspend admin server
+      - name: Suspend or Resume Servers Based on IST Hour
         run: |
-          curl -X POST "https://api.render.com/v1/services/srv-d1l68k6mcj7s73br77lg/suspend" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+          HOUR=$(TZ='Asia/Kolkata' date +'%H')
 
-      - name: Suspend main server
-        run: |
-          curl -X POST "https://api.render.com/v1/services/srv-d1l64c6mcj7s73br2u3g/suspend" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+          if [ "$HOUR" -eq 0 ]; then
+            echo "🛑 Suspending services..."
+            curl -X POST "https://api.render.com/v1/services/srv-d1l68k6mcj7s73br77lg/suspend" \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
 
-  resume-services:
-    if: github.event.schedule == '30 3 * * *'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Resume admin server
-        run: |
-          curl -X POST "https://api.render.com/v1/services/srv-d1l68k6mcj7s73br77lg/resume" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+            curl -X POST "https://api.render.com/v1/services/srv-d1l64c6mcj7s73br2u3g/suspend" \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+          
+          elif [ "$HOUR" -eq 9 ]; then
+            echo "🚀 Resuming services..."
+            curl -X POST "https://api.render.com/v1/services/srv-d1l68k6mcj7s73br77lg/resume" \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
 
-      - name: Resume main server
-        run: |
-          curl -X POST "https://api.render.com/v1/services/srv-d1l64c6mcj7s73br2u3g/resume" \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+            curl -X POST "https://api.render.com/v1/services/srv-d1l64c6mcj7s73br2u3g/resume" \
+              -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}"
+          
+          else
+            echo "⏰ Not the scheduled action time (Current IST Hour: $HOUR)."
+          fi
